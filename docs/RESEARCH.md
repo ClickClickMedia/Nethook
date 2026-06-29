@@ -165,7 +165,12 @@ spots/depths/times. Lures are rated by difficulty and by depth zone (surface/
 shallow/mid/deep); surface lures work at dawn/dusk, deep cranks at midday.
 **→ Nethook:** our reel minigame is a direct descendant — `tension` rises as you
 `reel`, you `ease` to bleed it, the line **snaps at max tension**, and fish
-`strength` sets the fight length. Rods/bait map to the difficulty/depth idea.
+`strength` sets the fight length. Rods/bait map to the difficulty/depth idea. We
+now also model the **low** half of the gauge: let tension sit too low and the line
+goes **slack** until the **hook slips** (a per-fight `slack` meter that fills while
+tension is below a floor and bleeds while you keep pressure on). This closes the
+"ease forever = free catch" exploit headless play-testing surfaced — you must hold
+tension in the safe **mid-band**, exactly as the Dreamcast manual describes.
 
 ### 4.2 Keep-it-in-the-zone — **Stardew Valley** (*fetched: SDV Wiki / GameSpot*)
 A **cast-distance meter**, then a minigame: keep a fish icon inside a **moving green
@@ -282,7 +287,7 @@ time — the natural next step for the `/nethook:spot` generator.
 | Three-pane layout, `@`, `~`/`≈` water, `$` shop, hjkl+arrows | NetHack Guidebook; RogueBasin glyphs |
 | Lowercase/uppercase fish by size; colour = rarity (+glyph+text, not colour-alone) | NetHack monster convention; RogueBasin "Use of color" + accessibility |
 | Seeded mulberry32 RNG on game state (reproducible runs ⇒ headless tests) | NetHack seeding behaviour |
-| Reel = rising tension, `ease` to bleed, **snap at max**, fight length ∝ strength | Sega Bass tension gauge; Stardew tap/release |
+| Reel = a **two-sided tension band**: `ease` to bleed, **snap at max**, **slip when slack**, fight length ∝ strength | Sega Bass tension gauge (both ends); Stardew tap/release |
 | Rarity-scaled difficulty & value; rods/bait unlock deeper/rarer | Sega Bass / DREDGE / AC:NH gear tiers |
 | Habitat (shallow/deep/reeds) + time-of-day gating | AC:NH & DREDGE spawn gating |
 | Junk items (boot/can) as comedy anti-reward | Ridiculous Fishing jellyfish |

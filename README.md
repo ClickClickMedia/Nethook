@@ -76,11 +76,12 @@ status handshake; the game itself is the same.)
 ## Gameplay
 - **Move** with `hjkl` or arrows; you walk the shore/dock (`@`).
 - **Fish**: press `f` then a direction to cast at adjacent water. On a bite, a reel
-  fight begins — **`r`** to reel when there's slack, **`e`** to ease when it runs.
-  Let the tension hit 100% and the line **snaps**. Fights come in three flavours
-  (rarer fish pick the nastier ones): a **steady haul**, a **runner** that bolts in
-  bursts (ease while it runs, reel when slack), and a **pendulum** where you reel
-  only while the sweeping lure sits in the green zone.
+  fight begins — **`r`** to reel, **`e`** to ease. Keep tension in the **safe band**:
+  let it hit 100% and the line **snaps**, but let it sit too **low** and the line
+  goes slack until the **hook slips** — so you can't just coast. Fights come in three
+  flavours (rarer fish pick the nastier ones): a **steady haul**, a **runner** that
+  bolts in bursts (ease while it runs, reel when slack), and a **pendulum** where you
+  reel only while the sweeping lure sits in the green zone.
 - **Water**: shallow `~`, deep `≈`, reeds `"`, lilypads `,`, rocks `#` (no fish).
   Different species favour different depths.
 - **Shanty** (`$`): spend coins on better **rods** and **bait** to unlock deeper
@@ -88,6 +89,7 @@ status handshake; the game itself is the same.)
 - **Crab pot** (idle): once deployed, it accrues a little catch in real time while
   you're away and pays out the next time you launch — but the haul decays
   **Fresh → Stale → Rotting** if you leave it too long, so check in regularly.
+  **Upgrade it** at the shanty (Mk 1 → 2 → …) for bigger hauls — a late-game coin sink.
 - **Complete the logbook**: catch every (non-junk) species at a spot and you earn
   the **Golden Rod** — the best rod in the game, granted once and kept for good.
 - **Trips**: each launch is one bounded daylight session; at dusk it scores.
@@ -127,7 +129,7 @@ trip's `°C` and a 🌑🌓🌕 feeding indicator.
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 98 assertions over the pure core
+npm test        # node game/selftest.mjs — 110 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

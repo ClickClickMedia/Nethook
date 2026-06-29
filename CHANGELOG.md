@@ -2,6 +2,28 @@
 
 All notable changes to Nethook are documented here.
 
+## 0.2.1 — balance pass (from headless play-testing)
+
+A balance/QA round driven by play-testing the pure core (driving real trips
+through `step()`), which surfaced a dominant exploit and a couple of rough edges.
+
+### Changed
+- **Two-sided tension band** (Sega Bass Fishing, RESEARCH.md §4.1): the line now
+  also goes **slack** and the **hook slips** if you let tension sit too low — a
+  per-fight `slack` meter that fills below a tension floor and bleeds while you
+  keep pressure on. Closes the "ease forever = guaranteed catch" exploit; you
+  must hold tension in the safe mid-band. (Passive coasting went from ~100% to
+  0% land; active play stays rewarding.)
+- **Crab-pot upgrade levels** as a late-game **coin sink**: the pot now upgrades
+  Mk 1 → 2 → … at doubling cost for bigger idle hauls, so surplus coins always
+  have somewhere to go (play-testing had coins ballooning past 30k with nothing
+  to spend on).
+- **Spot-aware bounties**: each bounty now has a feasibility check, so a spot
+  never offers a goal it can't satisfy (no "land a 5 kg fish" where the biggest
+  fish is a sub-kg perch, no "land a rare" where the spot has none).
+- **Junk no longer inflates the dex count**: boot/can/etc. are flagged in the
+  logbook and shown separately ("+N oddities") rather than counted as species.
+
 ## 0.2.0
 
 A big gameplay-depth and replayability pass. All additions keep the engine

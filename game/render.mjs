@@ -2,7 +2,7 @@
 // output (snapshot tests / non-ANSI terminals).
 
 import { TILE } from "./world.mjs";
-import { rod, bait, phaseOf } from "./core.mjs";
+import { rod, bait, phaseOf, potCost } from "./core.mjs";
 import { RARITY, RODS, BAITS } from "./fish.mjs";
 
 const WEATHER_ICON = { clear: "☀", cloudy: "☁", rain: "🌧", fog: "🌫", wind: "🌬" };
@@ -80,6 +80,9 @@ export function render(state, { color = true } = {}) {
     lines.push(`  ON THE LINE: ${aber}${sp.name}  ${paint(`(${MODE_LABEL[mode]})`, "1;35", color)}`);
     lines.push(`  TENSION  ${bar(state.reel.tension, state.reel.maxTension, 24, color, 31)} ${Math.round(state.reel.tension)}%`);
     lines.push(`  FIGHT    ${bar(state.reel.stamina, state.reel.maxStamina, 24, color, 33)}`);
+    if (state.reel.slack > 0) {
+      lines.push(`  SLACK    ${bar(state.reel.slack, state.reel.maxSlack || 100, 24, color, 95)} — keep tension up or the hook slips!`);
+    }
     if (mode === "surge") {
       lines.push(state.reel.running
         ? paint("  ⚡ IT'S RUNNING — [e] ease off!", "1;91", color)
@@ -94,16 +97,20 @@ export function render(state, { color = true } = {}) {
     lines.push("  🛖 SHANTY");
     lines.push(`  [1] ${nextLabel(state, "rod")}`);
     lines.push(`  [2] ${nextLabel(state, "bait")}`);
-    lines.push(`  [3] ${state.logbook.gear.crabPot ? "Crab pot deployed (fills while away)" : "Buy crab pot (80c) — yields while away"}`);
+    const potLvl = state.logbook.gear.potLevel | 0;
+    lines.push(`  [3] ${potLvl ? `Upgrade crab pot → Mk ${potLvl + 1} (${potCost(potLvl)}c)` : "Buy crab pot (80c) — yields while away"}`);
     lines.push("  [q] leave");
   } else if (state.mode === "gameover") {
     lines.push(paint(`  ☀️  DUSK — trip over. Score ${state.score}  (best ${state.logbook.bestScore})`, "1;33", color));
     const tripTrophies = state.caught.filter((c) => c.trophy).length;
     const tripAber = state.caught.filter((c) => c.aberrant).length;
     const flags = `${tripTrophies ? ` 🏆${tripTrophies}` : ""}${tripAber ? ` 🜂${tripAber}` : ""}`;
+    const dexVals = Object.values(state.logbook.dex);
+    const realDex = dexVals.filter((d) => !d.junk).length;
+    const oddities = dexVals.length - realDex;
     lines.push(
       `  Caught this trip: ${state.caught.length}${flags}  |  ` +
-        `Dex: ${Object.keys(state.logbook.dex).length} species  |  ` +
+        `Dex: ${realDex} species${oddities ? ` (+${oddities} oddities)` : ""}  |  ` +
         `Trophies: ${state.logbook.totals.trophies || 0}  |  Aberrations: ${state.logbook.totals.aberrations || 0}`,
     );
     const bounties = state.bounties || [];

@@ -14,6 +14,7 @@ import { validatePack, listPacks } from "./pack.mjs";
 import { render } from "./render.mjs";
 import { seedFrom } from "./rng.mjs";
 import { RODS } from "./fish.mjs";
+import { potCost } from "./core.mjs";
 
 let passed = 0;
 function ok(cond, label) {
@@ -423,6 +424,78 @@ function ok(cond, label) {
   t.reel = { speciesId: "minnow", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
   t = step(t, { type: "reel" }); // minnow is far under 5kg
   ok(t.bounties[0].done === false, "a non-qualifying catch leaves the bounty open");
+}
+
+// 20. Two-sided tension band — the hook slips on sustained slack (Sega Bass §4.1)
+{
+  // A passive "ease and coast" player keeps tension at zero → slack builds → loss.
+  let s = newGame({ seed: "slack-test" });
+  s.mode = "reel";
+  s.reel = { speciesId: "pike", targetX: -1, targetY: -1, stamina: 5, maxStamina: 5,
+    tension: 0, maxTension: 100, mode: "steady", slack: 0, maxSlack: 100 };
+  let guard = 0;
+  while (s.mode === "reel" && guard < 100) { guard += 1; s = step(s, { type: "strain" }); s = step(s, { type: "ease" }); }
+  ok(s.mode === "explore" && s.caught.length === 0, "coasting on slack line loses the fish (hook slips)");
+
+  // Keeping tension up (reeling) bleeds slack back down — active play is safe.
+  let a = newGame({ seed: "slack-safe" });
+  a.mode = "reel";
+  a.reel = { speciesId: "perch", targetX: -1, targetY: -1, stamina: 2, maxStamina: 2,
+    tension: 40, maxTension: 100, mode: "steady", slack: 40, maxSlack: 100 };
+  a = step(a, { type: "strain" }); // tension 40 >= LOW → slack bleeds
+  ok(a.reel.slack < 40, "keeping tension in the band bleeds slack back down");
+}
+
+// 21. Crab-pot upgrade levels as a coin sink
+{
+  ok(potCost(0) === 80 && potCost(1) === 160 && potCost(2) === 320, "pot cost doubles each level");
+  let s = newGame({ seed: "pot-sink" });
+  s.inventory.coins = 1000;
+  s.player = { ...s.world.shop };
+  s = step(s, { type: "openShop" });
+  s = step(s, { type: "buyPot" }); // deploy, 80c
+  ok(s.logbook.gear.crabPot === true && s.logbook.gear.potLevel === 1, "first purchase deploys the pot at Mk 1");
+  ok(s.inventory.coins === 920, "deploy costs 80");
+  s = step(s, { type: "buyPot" }); // upgrade, 160c
+  ok(s.logbook.gear.potLevel === 2 && s.inventory.coins === 760, "upgrade raises the level and costs more");
+  // a higher-level pot yields more for the same elapsed time
+  const lvl1 = step({ ...newGame({ seed: "yld" }), logbook: { ...newGame({ seed: "yld" }).logbook, gear: { rodLevel: 0, baitLevel: 0, coins: 0, crabPot: true, potLevel: 1 } } }, { type: "collectPot", seconds: 6 * 3600 });
+  const lvl3 = step({ ...newGame({ seed: "yld" }), logbook: { ...newGame({ seed: "yld" }).logbook, gear: { rodLevel: 0, baitLevel: 0, coins: 0, crabPot: true, potLevel: 3 } } }, { type: "collectPot", seconds: 6 * 3600 });
+  ok(lvl3.pot.coins > lvl1.pot.coins, "a higher-level pot yields more");
+}
+
+// 22. Spot-aware bounties — only feasible goals are offered
+{
+  // A tiny pond whose biggest fish is sub-kg must never roll the 5kg "lunker"
+  // or a "rare" bounty (no rare species here).
+  const pond = validatePack({
+    name: "Minnow Pond",
+    species: [{ name: "Tiddler", rarity: "common", habitat: "shallow", weightRange: [0.02, 0.2] }],
+  });
+  let any5kg = false, anyRare = false;
+  for (let i = 0; i < 20; i++) {
+    const g = newGame({ seed: `pond-${i}`, pack: pond.pack });
+    for (const b of g.bounties) { if (b.id === "lunker") any5kg = true; if (b.id === "rare") anyRare = true; }
+  }
+  ok(!any5kg, "the 5kg lunker bounty is never offered where no fish reaches 5kg");
+  ok(!anyRare, "the rare-fish bounty is never offered where there is no rare species");
+  // …but a big-fish spot can still roll the lunker
+  let sawLunker = false;
+  for (let i = 0; i < 20 && !sawLunker; i++) {
+    const g = newGame({ seed: `fjord-${i}`, pack: validatePack(JSON.parse(JSON.stringify({ name: "Big", species: [{ name: "Whale", rarity: "legendary", weightRange: [20, 200] }] }))).pack });
+    if (g.bounties.some((b) => b.id === "lunker")) sawLunker = true;
+  }
+  ok(sawLunker, "the lunker bounty can still appear where big fish live");
+}
+
+// 23. Junk no longer inflates the dex "species" count
+{
+  const lb = emptyLogbook();
+  recordCatch(lb, { id: "trout", name: "Trout", rarity: "rare" }, 2, "B", false, false);
+  recordCatch(lb, { id: "boot", name: "Old Boot", rarity: "common", junk: true }, 1, "F", false, false);
+  ok(lb.dex.boot.junk === true && !lb.dex.trout.junk, "junk catches are flagged in the dex");
+  const real = Object.values(lb.dex).filter((d) => !d.junk).length;
+  ok(real === 1, "the species count excludes junk (1 real species, not 2)");
 }
 
 console.log(`OK — ${passed} assertions passed.`);

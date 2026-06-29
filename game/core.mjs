@@ -81,7 +81,7 @@ export function emptyLogbook() {
     dex: {},
     totals: { caught: 0, weight: 0, trips: 0, casts: 0, trophies: 0, aberrations: 0 },
     bestScore: 0,
-    gear: { rodLevel: 0, baitLevel: 0, coins: 0, crabPot: false },
+    gear: { rodLevel: 0, baitLevel: 0, coins: 0, crabPot: false, potLevel: 0 },
     rewards: { goldenRod: false },
     lastPlayed: 0, // epoch ms, stamped by index.mjs — drives idle crab-pot accrual
   };
@@ -109,7 +109,7 @@ export function newGame({ seed = "nethook", pack = null, logbook = null, env = n
     : env && isNum(env.solunar) ? env.solunar
       : null; // null = unknown → neutral, no effect on the bite
 
-  const bounties = rollBounties(seedState); // two per-trip goals (replayability)
+  const bounties = rollBounties(seedState, world, lb); // two feasible per-trip goals
 
   return {
     seed,
@@ -298,7 +298,24 @@ function makeReel(s, sp, tx, ty, aberrant = false) {
     reel.zoneLo = randint(s, 0, 100 - span);
     reel.zoneHi = reel.zoneLo + span;
   }
+  reel.slack = 0;
+  reel.maxSlack = 100;
   return reel;
+}
+
+// Two-sided tension band, faithful to Sega Bass Fishing (RESEARCH.md §4.1): the
+// line snaps at MAX tension, but it also goes SLACK and the hook slips if you let
+// tension sit too LOW while the fish is still green. The strain tick (the fish
+// fighting) builds slack when the line is slack and bleeds it when you keep
+// pressure on — so "ease and coast" is no longer a free win; you must keep
+// tension in the safe mid-band. Brief dips are fine; sustained slack loses the fish.
+const LOW_TENSION = 18;
+function applySlack(s, sp) {
+  if (s.reel.tension < LOW_TENSION) {
+    s.reel.slack = (s.reel.slack || 0) + 7 + Math.floor(sp.strength * 0.8);
+  } else {
+    s.reel.slack = Math.max(0, (s.reel.slack || 0) - 12);
+  }
 }
 
 function doReel(s, kind) {
@@ -308,6 +325,7 @@ function doReel(s, kind) {
   if (m === "surge") surgeReel(s, sp, kind);
   else if (m === "pendulum") pendulumReel(s, sp, kind);
   else steadyReel(s, sp, kind);
+  if (kind === "strain") applySlack(s, sp); // the fish works the slack while it fights
   return resolveReel(s, sp);
 }
 
@@ -369,6 +387,12 @@ function resolveReel(s, sp) {
     s.reel = null;
     return s;
   }
+  if ((s.reel.slack || 0) >= (s.reel.maxSlack || 100)) {
+    msg(s, `The line goes SLACK — the ${sp.name} shakes the hook!`);
+    s.mode = "explore";
+    s.reel = null;
+    return s;
+  }
   if (s.reel.stamina <= 0) return landFish(s, sp);
   return s;
 }
@@ -395,18 +419,32 @@ function gradeRank(g) {
 // every launch has a fresh objective beyond raw score. Pure: rolled from the rng
 // stream, evaluated against each catch. Test predicates live here (functions can't
 // ride on cloned state); only {id,desc,reward,done} is stored on the trip.
+// Each bounty has a `test` (did this catch complete it?) and a `feasible` check
+// (can this spot/logbook satisfy it at all?). rollBounties only ever offers
+// feasible goals, so you never get "land a 5kg fish" at a spot whose biggest
+// fish is a 1kg perch. trophy/aberration/fivecatch are always possible, so there
+// are always at least three candidates to draw two from.
 const BOUNTIES = [
-  { id: "rare", desc: "Land a rare-or-better fish", reward: 30, test: (c) => RARITY[c.rarity].mult >= 5 && !c.junk },
-  { id: "trophy", desc: "Land a trophy catch", reward: 35, test: (c) => !!c.trophy },
-  { id: "aberration", desc: "Hook an aberration", reward: 45, test: (c) => !!c.aberrant },
-  { id: "lunker", desc: "Land a fish over 5kg", reward: 30, test: (c) => c.weight >= 5 },
-  { id: "newdex", desc: "Log a new species", reward: 25, test: (c, s) => s.logbook.dex[c.speciesId] && s.logbook.dex[c.speciesId].count === 1 },
-  { id: "fivecatch", desc: "Land 5 fish this trip", reward: 25, test: (c, s) => s.caught.length >= 5 },
+  { id: "rare", desc: "Land a rare-or-better fish", reward: 30,
+    test: (c) => RARITY[c.rarity].mult >= 5 && !c.junk,
+    feasible: (w) => w.species.some((sp) => !sp.junk && RARITY[sp.rarity].mult >= 5) },
+  { id: "trophy", desc: "Land a trophy catch", reward: 35,
+    test: (c) => !!c.trophy, feasible: () => true },
+  { id: "aberration", desc: "Hook an aberration", reward: 45,
+    test: (c) => !!c.aberrant, feasible: () => true },
+  { id: "lunker", desc: "Land a fish over 5kg", reward: 30,
+    test: (c) => c.weight >= 5,
+    feasible: (w) => w.species.some((sp) => !sp.junk && sp.weightRange[1] >= 5) },
+  { id: "newdex", desc: "Log a new species", reward: 25,
+    test: (c, s) => s.logbook.dex[c.speciesId] && s.logbook.dex[c.speciesId].count === 1,
+    feasible: (w, lb) => w.species.some((sp) => !sp.junk && !(lb.dex[sp.id] && lb.dex[sp.id].count > 0)) },
+  { id: "fivecatch", desc: "Land 5 fish this trip", reward: 25,
+    test: (c, s) => s.caught.length >= 5, feasible: () => true },
 ];
 const BOUNTY_TEST = Object.fromEntries(BOUNTIES.map((b) => [b.id, b.test]));
 
-function rollBounties(seedState) {
-  const pool = BOUNTIES.slice();
+function rollBounties(seedState, world, lb) {
+  const pool = BOUNTIES.filter((b) => b.feasible(world, lb));
   const out = [];
   for (let i = 0; i < 2 && pool.length; i++) {
     const [t] = pool.splice(Math.floor(rand(seedState) * pool.length), 1);
@@ -483,7 +521,7 @@ function checkDexReward(s) {
 }
 
 export function recordCatch(logbook, sp, weight, grade = null, trophy = false, aberrant = false) {
-  const d = logbook.dex[sp.id] || { name: sp.name, count: 0, bestWeight: 0, rarity: sp.rarity, bestGrade: null, trophies: 0, aberrations: 0 };
+  const d = logbook.dex[sp.id] || { name: sp.name, count: 0, bestWeight: 0, rarity: sp.rarity, bestGrade: null, trophies: 0, aberrations: 0, junk: !!sp.junk };
   d.count++;
   d.bestWeight = Math.max(d.bestWeight, weight);
   if (grade && gradeRank(grade) > gradeRank(d.bestGrade)) d.bestGrade = grade;
@@ -533,19 +571,26 @@ function syncGear(s) {
     baitLevel: s.inventory.baitLevel,
     coins: s.inventory.coins,
     crabPot: !!(s.logbook.gear && s.logbook.gear.crabPot),
+    potLevel: (s.logbook.gear && s.logbook.gear.potLevel) | 0,
   };
 }
 
-const CRAB_POT_PRICE = 80;
+// The crab pot is also the late-game COIN SINK: after gear is maxed there's
+// always something to pour coins into. First purchase deploys it (80c); each
+// upgrade doubles the cost and grows the idle haul — an open-ended spend.
+export function potCost(level) {
+  return 80 * Math.pow(2, level | 0);
+}
 
 function buyPot(s) {
   if (s.mode !== "shop") return s;
-  if (s.logbook.gear && s.logbook.gear.crabPot) return (msg(s, "Your crab pot's already out there."), s);
-  if (s.inventory.coins < CRAB_POT_PRICE) return (msg(s, `Need ${CRAB_POT_PRICE} coins for a crab pot.`), s);
-  s.inventory.coins -= CRAB_POT_PRICE;
-  s.logbook.gear = { ...s.logbook.gear, crabPot: true };
+  const lvl = (s.logbook.gear && s.logbook.gear.potLevel) | 0;
+  const cost = potCost(lvl);
+  if (s.inventory.coins < cost) return (msg(s, `Need ${cost} coins to ${lvl ? "upgrade" : "deploy"} the crab pot.`), s);
+  s.inventory.coins -= cost;
+  s.logbook.gear = { ...s.logbook.gear, crabPot: true, potLevel: lvl + 1 };
   syncGear(s);
-  msg(s, "Crab pot deployed — it'll fill with a little catch while you're away.");
+  msg(s, lvl ? `Crab pot upgraded to Mk ${lvl + 1} — bigger hauls while you're away.` : "Crab pot deployed — it'll fill with a little catch while you're away.");
   return s;
 }
 
@@ -560,7 +605,8 @@ export function collectPot(s, seconds) {
   if (!s.logbook.gear || !s.logbook.gear.crabPot) return s;
   if (!isNum(seconds) || seconds <= 0) return s;
   const fill = Math.min(1, seconds / POT_FILL_SECONDS);
-  let coins = Math.round(fill * 40 * (0.85 + rand(s) * 0.3));
+  const lvl = (s.logbook.gear.potLevel | 0) || 1; // Mk-1 yields ×1, each level +60%
+  let coins = Math.round(fill * 40 * (0.85 + rand(s) * 0.3) * (1 + 0.6 * (lvl - 1)));
   let freshness = "Fresh";
   if (seconds > POT_FILL_SECONDS * 3) { freshness = "Rotting"; coins = Math.round(coins * 0.4); }
   else if (seconds > POT_FILL_SECONDS) { freshness = "Stale"; coins = Math.round(coins * 0.75); }

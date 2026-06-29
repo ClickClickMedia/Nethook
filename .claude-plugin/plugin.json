@@ -1,7 +1,7 @@
 {
   "name": "nethook",
   "description": "A NetHack-style ASCII fishing roguelike to play in a second terminal window while Claude Code is busy. /gofish opens it; a hook pings you when Claude is done. Generate playable real-world fishing spots with /nethook:spot.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "ClickClickMedia"
   },
