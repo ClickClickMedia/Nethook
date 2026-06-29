@@ -102,13 +102,14 @@ Four techniques surveyed (RogueBasin via *mirror*; Red Blob *fetched*):
 | **Drunkard's walk** | From a start cell, step randomly, carving floor until a target fill; guaranteed connected. | **Meandering rivers/streams**, connecting separate water bodies. |
 | **BSP** | Recursively split a rectangle (split ratio 0.45–0.55 homogeneous), place non-overlapping rooms, connect leaves. | **Man-made structures** (docks/huts/tackle shop). |
 
-**→ Nethook:** `world.mjs` currently uses a **noise-like radial elevation** field
-(distance-from-centre + jitter → deep/shallow bands) plus decorative passes for
-reeds/lilypads/rocks, and a carved dock + shop — a pragmatic blend of the *noise*
-(depth bands for habitat) and *BSP* (placed features) ideas. **Deferred:** swapping
-the radial field for **cellular automata** would give more natural, irregular
-shorelines; **drunkard's walk** could add inlets/streams. Both are drop-in upgrades
-to `generateLake()`.
+**→ Nethook:** `world.mjs` now ships **three** rng-selected generators behind
+`generateLake()` — the original **noise-like radial** blob, a **cellular-automata**
+mask (random fill → 5 smoothing passes) for ragged organic shorelines, and a
+**drunkard's-walk** carve for meandering, stream-like bodies — all feeding one
+shared depth+decoration pass (interior→deep, fringe→shallow, scattered reeds/
+lilypads/rocks) and a carved dock + shop. A fill guard falls back to the radial
+blob if a mask comes out too empty. Pure and seed-deterministic, so the headless
+tests assert every seed yields a playable, water-bearing lake.
 
 ---
 
@@ -286,14 +287,18 @@ bite formula — a clean, well-scoped enhancement to the `/nethook:spot` generat
 | Spot Packs as validated JSON content | freefish (JSON fish); Berlin "random/varied environments" |
 
 ## 7. Deferred ideas worth stealing later
-- **Cellular-automata / drunkard's-walk lakes** for more organic shorelines & streams.
-- **Multiple reel-minigame variants** (radial / pendulum / rising-balls) — DREDGE's
-  fix for repetition.
-- **Trophy catches** (rare gold window, top-N% size, value bonus) and **aberration**
-  rare variants.
-- **More gating axes:** season, weather, bait that force-spawns — huge content
-  leverage, especially expressed through Spot Packs.
-- **Dex-completion rewards** (e.g. a legendary rod for filling the logbook).
+> Several of these have since shipped — kept here with status for traceability.
+- ~~**Cellular-automata / drunkard's-walk lakes**~~ — **DONE**: three rng-selected
+  generators (radial / cellular / drunkard) behind `generateLake()`.
+- ~~**Multiple reel-minigame variants**~~ — **DONE**: steady / surge / pendulum,
+  picked per hookup by rarity (`chooseReelMode()`).
+- ~~**Trophy catches**~~ — **DONE**: F–SSS grades + top-of-range / gold-strike
+  trophies with a value bonus. **Aberration** rare variants still open.
+- ~~**More gating axes:** season, weather, bait~~ — **DONE**: per-trip season +
+  weather + day-phase gate the bite pool; preferred-bait weighting; all via Spot
+  Packs. (True force-spawn bait still open.)
+- ~~**Dex-completion rewards**~~ — **DONE**: complete a spot's logbook → the
+  earned-not-bought **Golden Rod**.
 - **Catch freshness/decay** and a small spatial inventory (DREDGE) if we ever add
   selling/economy depth.
 - Optional **rot.js** for FOV/pathfinding if the world gains AI actors.

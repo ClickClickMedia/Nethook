@@ -84,34 +84,116 @@ function parsePackMap(map) {
   return grid;
 }
 
+// Procedural lakes. Each trip's world is built from one of three pure,
+// rng-driven water-mask generators (RESEARCH.md §2, §7), then depth + decoration
+// are applied uniformly. Variety keeps repeated trips visually fresh:
+//   radial    — the original smooth blob (round pond)
+//   cellular  — cellular-automata: ragged organic shoreline (cave-style smoothing)
+//   drunkard  — a random walk: meandering inlets / a stream-like body
 function generateLake(state) {
   const W = 46, H = 18;
-  const grid = Array.from({ length: H }, () => Array.from({ length: W }, () => TILE.LAND));
+  const kind = rand(state);
+  let water = kind < 0.34 ? radialMask(state, W, H)
+    : kind < 0.67 ? cellularMask(state, W, H)
+      : drunkardMask(state, W, H);
+  // Guard: never ship an empty lake — fall back to the dependable radial blob.
+  let count = 0;
+  for (const row of water) for (const c of row) if (c) count++;
+  if (count < W * H * 0.1) water = radialMask(state, W, H);
+  return maskToTiles(state, water, W, H);
+}
+
+// A round-ish blob: distance-from-centre with a little jitter.
+function radialMask(state, W, H) {
+  const g = blank(W, H, false);
   const cx = W / 2, cy = H / 2;
   const rx = W * (0.34 + rand(state) * 0.05);
   const ry = H * (0.34 + rand(state) * 0.05);
-  for (let y = 0; y < H; y++) {
+  for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const noise = (rand(state) - 0.5) * 0.22;
-      const d = Math.hypot((x - cx) / rx, (y - cy) / ry) + noise;
-      if (d < 0.55) grid[y][x] = TILE.DEEP;
-      else if (d < 1) grid[y][x] = TILE.SHALLOW;
+      if (Math.hypot((x - cx) / rx, (y - cy) / ry) + noise < 1) g[y][x] = true;
     }
+  return g;
+}
+
+// Cellular automata: random fill, then smooth — a cell is water unless it has
+// 5+ land neighbours (border counts as land). Ragged, organic shorelines.
+function cellularMask(state, W, H) {
+  let g = blank(W, H, false);
+  for (let y = 1; y < H - 1; y++)
+    for (let x = 1; x < W - 1; x++) g[y][x] = rand(state) < 0.46;
+  for (let pass = 0; pass < 5; pass++) {
+    const n = blank(W, H, false);
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        let land = 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || !g[ny][nx]) land++;
+          }
+        n[y][x] = x > 0 && y > 0 && x < W - 1 && y < H - 1 && land < 5;
+      }
+    g = n;
   }
-  // Decorate: reeds along the shallow fringe, lilypads + rocks scattered.
-  for (let y = 0; y < H; y++) {
+  return g;
+}
+
+// Drunkard's walk from the centre, carving water until a target fill, then
+// widened a touch so channels read as water rather than a 1px scratch.
+function drunkardMask(state, W, H) {
+  const g = blank(W, H, false);
+  const target = Math.floor(W * H * 0.3);
+  let x = Math.floor(W / 2), y = Math.floor(H / 2), filled = 0, guard = 0;
+  while (filled < target && guard < W * H * 40) {
+    guard++;
+    if (x > 0 && y > 0 && x < W - 1 && y < H - 1 && !g[y][x]) { g[y][x] = true; filled++; }
+    const dir = Math.floor(rand(state) * 4);
+    if (dir === 0 && x < W - 2) x++;
+    else if (dir === 1 && x > 1) x--;
+    else if (dir === 2 && y < H - 2) y++;
+    else if (dir === 3 && y > 1) y--;
+  }
+  const w = g.map((r) => r.slice());
+  for (let yy = 1; yy < H - 1; yy++)
+    for (let xx = 1; xx < W - 1; xx++)
+      if (g[yy][xx]) {
+        if (rand(state) < 0.6) w[yy][xx + 1] = true;
+        if (rand(state) < 0.4) w[yy + 1][xx] = true;
+      }
+  return w;
+}
+
+// Turn a boolean water mask into a tile grid: interior (4-neighbours all water)
+// becomes deep, the fringe shallow; then scatter reeds / lilypads / rocks.
+function maskToTiles(state, water, W, H) {
+  const isW = (x, y) => x >= 0 && y >= 0 && x < W && y < H && water[y][x];
+  const grid = Array.from({ length: H }, (_, y) =>
+    Array.from({ length: W }, (_, x) => (water[y][x] ? TILE.SHALLOW : TILE.LAND)),
+  );
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (water[y][x] && isW(x + 1, y) && isW(x - 1, y) && isW(x, y + 1) && isW(x, y - 1)) {
+        grid[y][x] = TILE.DEEP;
+      }
+    }
+  for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       if (grid[y][x] !== TILE.SHALLOW) continue;
       const r = rand(state);
       if (touchesLand(grid, x, y) && r < 0.4) grid[y][x] = TILE.REEDS;
       else if (r > 0.92) grid[y][x] = TILE.LILY;
     }
-  }
   for (let i = 0; i < 8; i++) {
     const x = randint(state, 1, W - 2), y = randint(state, 1, H - 2);
     if (grid[y][x] === TILE.DEEP || grid[y][x] === TILE.SHALLOW) grid[y][x] = TILE.ROCK;
   }
   return grid;
+}
+
+function blank(W, H, fill) {
+  return Array.from({ length: H }, () => Array.from({ length: W }, () => fill));
 }
 
 function touchesLand(grid, x, y) {

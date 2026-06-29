@@ -302,4 +302,20 @@ function ok(cond, label) {
   ok(v2.ok && v2.pack.species[0].weather === undefined, "an unknown gate token degrades to unrestricted, not a rejection");
 }
 
+// 15. Every procedural generator yields a playable lake
+{
+  let waterOk = true, dockOk = true, sawDeep = false;
+  for (let i = 0; i < 24; i++) {
+    const s = newGame({ seed: `gen-${i}` });
+    let water = 0;
+    for (const row of s.world.tiles) for (const c of row) { if (isWater(c)) water++; if (c === TILE.DEEP) sawDeep = true; }
+    if (water < 20) waterOk = false;
+    const ps = s.world.playerStart;
+    if (!(ps && tileAt(s.world, ps.x, ps.y) === TILE.DOCK)) dockOk = false;
+  }
+  ok(waterOk, "every procedural seed yields a lake with real water");
+  ok(dockOk, "every procedural seed yields a dock start");
+  ok(sawDeep, "procedural lakes carve deep water for deep-habitat fish");
+}
+
 console.log(`OK — ${passed} assertions passed.`);
