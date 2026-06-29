@@ -59,8 +59,11 @@ Claude kicks off a long command (once per session).
 - **Shanty** (`$`): spend coins on better **rods** and **bait** to unlock deeper
   water and rarer fish. Gear and coins persist between trips.
 - **Trips**: each launch is one bounded daylight session; at dusk it scores.
-- **Logbook** (persistent): species dex, biggest catches, totals, best score —
-  saved under `$XDG_DATA_HOME/nethook` (or `~/.local/share/nethook`).
+- **Grades & trophies**: every catch is graded **F→SSS** by how big it is for its
+  species. A top-of-range specimen (or a rare gold strike) lands a **🏆 trophy**
+  worth a value bonus — the logbook remembers your best grade and trophy count.
+- **Logbook** (persistent): species dex, biggest catches, best grades, trophies,
+  totals, best score — saved under `$XDG_DATA_HOME/nethook` (or `~/.local/share/nethook`).
 
 ## Spot Packs
 A Spot Pack is JSON describing a real location: an optional ASCII map, a species
@@ -73,7 +76,7 @@ bad one can never crash the game; with no pack it builds a procedural lake.
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 39 assertions over the pure core
+npm test        # node game/selftest.mjs — 45 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

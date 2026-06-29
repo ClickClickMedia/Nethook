@@ -6,7 +6,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { newGame, step, endTrip, emptyLogbook } from "./core.mjs";
+import { newGame, step, endTrip, emptyLogbook, recordCatch, gradeFor } from "./core.mjs";
 import { buildWorld, isWalkable, isWater, tileAt, TILE } from "./world.mjs";
 import { saveLogbook, loadLogbook } from "./logbook.mjs";
 import { validatePack, listPacks } from "./pack.mjs";
@@ -210,6 +210,28 @@ function ok(cond, label) {
     }
   }
   ok(castReel && ["steady", "surge", "pendulum"].includes(castReel.mode), "a hooked fish from a real cast gets a valid reel mode");
+}
+
+// 12. Catch grades + trophy records
+{
+  ok(gradeFor(1) === "SSS" && gradeFor(0.86) === "S" && gradeFor(0.5) === "C" && gradeFor(0.1) === "F",
+    "gradeFor maps size fraction onto the F..SSS scale");
+
+  const lb = emptyLogbook();
+  const sp = { id: "x", name: "X", rarity: "common" };
+  recordCatch(lb, sp, 5.0, "SSS", true);
+  ok(lb.dex.x.bestGrade === "SSS", "dex records the best grade");
+  ok(lb.dex.x.trophies === 1 && lb.totals.trophies === 1, "trophy is counted in dex and totals");
+  recordCatch(lb, sp, 2.0, "C", false);
+  ok(lb.dex.x.bestGrade === "SSS", "best grade only ratchets upward");
+  ok(lb.totals.trophies === 1, "a non-trophy catch does not bump the trophy count");
+
+  // a landed fish carries a grade, and a top-of-range fish is flagged a trophy
+  let s = newGame({ seed: "grade-land" });
+  s.mode = "reel";
+  s.reel = { speciesId: "perch", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
+  s = step(s, { type: "reel" });
+  ok(typeof s.caught[0].grade === "string" && "trophy" in s.caught[0], "a landed catch carries a grade and trophy flag");
 }
 
 console.log(`OK — ${passed} assertions passed.`);

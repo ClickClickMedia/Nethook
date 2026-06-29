@@ -48,7 +48,7 @@ The game is split so the logic is testable without a terminal:
 
 ## Commands
 ```bash
-npm test                              # node game/selftest.mjs (39 assertions)
+npm test                              # node game/selftest.mjs (45 assertions)
 node game/index.mjs ["Spot Name"]     # play locally (needs a real TTY)
 node game/launch.mjs --dry-run        # show the window-spawn plan for this env
 NETHOOK_FORCE_ENV=macos node game/launch.mjs --dry-run   # force an env

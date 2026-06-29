@@ -13,7 +13,7 @@ export function emptyLogbook() {
   return {
     version: 1,
     dex: {},
-    totals: { caught: 0, weight: 0, trips: 0, casts: 0 },
+    totals: { caught: 0, weight: 0, trips: 0, casts: 0, trophies: 0 },
     bestScore: 0,
     gear: { rodLevel: 0, baitLevel: 0, coins: 0 },
   };
@@ -264,30 +264,60 @@ function resolveReel(s, sp) {
   return s;
 }
 
+// Catch grades, terminal-fish style: a letter rank by how big the specimen is
+// for its species (fraction of the species' max weight). F (runt) → SSS (record).
+export const GRADE_ORDER = ["F", "D", "C", "B", "A", "S", "SS", "SSS"];
+export function gradeFor(frac) {
+  if (frac >= 0.97) return "SSS";
+  if (frac >= 0.92) return "SS";
+  if (frac >= 0.85) return "S";
+  if (frac >= 0.72) return "A";
+  if (frac >= 0.58) return "B";
+  if (frac >= 0.42) return "C";
+  if (frac >= 0.25) return "D";
+  return "F";
+}
+function gradeRank(g) {
+  return g ? GRADE_ORDER.indexOf(g) : -1;
+}
+
 function landFish(s, sp) {
   const [lo, hi] = sp.weightRange;
   const weight = Math.round((lo + rand(s) * (hi - lo)) * 100) / 100;
-  const points = Math.max(1, Math.round(weight * RARITY[sp.rarity].mult * 10));
-  s.caught.push({ speciesId: sp.id, name: sp.name, weight, points, rarity: sp.rarity });
+  const frac = hi > 0 ? weight / hi : 1;
+  const grade = gradeFor(frac);
+  // Trophy: a top-of-range specimen (top ~15% by size, DREDGE's "Trophy") or a
+  // rare gold strike — worth a +25% value bonus and a permanent logbook mark.
+  const trophy = !sp.junk && (frac >= 0.85 || rand(s) < 0.02);
+  let points = Math.max(1, Math.round(weight * RARITY[sp.rarity].mult * 10));
+  if (trophy) points = Math.round(points * 1.25);
+  s.caught.push({ speciesId: sp.id, name: sp.name, weight, points, rarity: sp.rarity, grade, trophy });
   s.score += points;
   s.inventory.coins += points;
-  recordCatch(s.logbook, sp, weight);
+  recordCatch(s.logbook, sp, weight, grade, trophy);
   // remove the visible fish, if any, from the target tile
   s.world.fish = s.world.fish.filter((f) => !(f.x === s.reel.targetX && f.y === s.reel.targetY));
-  const tag = sp.junk ? "Fished up" : "LANDED";
-  msg(s, `${tag} a ${sp.name} — ${weight}kg! +${points} pts`);
+  if (trophy) {
+    msg(s, `🏆 TROPHY ${sp.name} — ${weight}kg, grade ${grade}! +${points} pts`);
+  } else {
+    const tag = sp.junk ? "Fished up" : "LANDED";
+    msg(s, `${tag} a ${sp.name} — ${weight}kg [${grade}]  +${points} pts`);
+  }
   s.mode = "explore";
   s.reel = null;
   return s;
 }
 
-export function recordCatch(logbook, sp, weight) {
-  const d = logbook.dex[sp.id] || { name: sp.name, count: 0, bestWeight: 0, rarity: sp.rarity };
+export function recordCatch(logbook, sp, weight, grade = null, trophy = false) {
+  const d = logbook.dex[sp.id] || { name: sp.name, count: 0, bestWeight: 0, rarity: sp.rarity, bestGrade: null, trophies: 0 };
   d.count++;
   d.bestWeight = Math.max(d.bestWeight, weight);
+  if (grade && gradeRank(grade) > gradeRank(d.bestGrade)) d.bestGrade = grade;
+  if (trophy) d.trophies = (d.trophies || 0) + 1;
   logbook.dex[sp.id] = d;
   logbook.totals.caught++;
   logbook.totals.weight = Math.round((logbook.totals.weight + weight) * 100) / 100;
+  if (trophy) logbook.totals.trophies = (logbook.totals.trophies || 0) + 1;
 }
 
 function openShop(s) {

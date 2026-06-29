@@ -80,7 +80,11 @@ export function render(state, { color = true } = {}) {
     lines.push("  [q] leave");
   } else if (state.mode === "gameover") {
     lines.push(paint(`  ☀️  DUSK — trip over. Score ${state.score}  (best ${state.logbook.bestScore})`, "1;33", color));
-    lines.push(`  Caught this trip: ${state.caught.length}  |  Dex: ${Object.keys(state.logbook.dex).length} species`);
+    const tripTrophies = state.caught.filter((c) => c.trophy).length;
+    lines.push(
+      `  Caught this trip: ${state.caught.length}${tripTrophies ? ` (🏆${tripTrophies})` : ""}  |  ` +
+        `Dex: ${Object.keys(state.logbook.dex).length} species  |  Trophies: ${state.logbook.totals.trophies || 0}`,
+    );
     lines.push("  [n] new trip   [q] quit");
   } else {
     // message log
