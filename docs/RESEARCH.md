@@ -293,7 +293,9 @@ bite formula — a clean, well-scoped enhancement to the `/nethook:spot` generat
 - ~~**Multiple reel-minigame variants**~~ — **DONE**: steady / surge / pendulum,
   picked per hookup by rarity (`chooseReelMode()`).
 - ~~**Trophy catches**~~ — **DONE**: F–SSS grades + top-of-range / gold-strike
-  trophies with a value bonus. **Aberration** rare variants still open.
+  trophies with a value bonus.
+- ~~**Aberration** rare variants~~ — **DONE**: eerie 🜂 variants surface at low
+  light / in fog (`aberrationChance()`), fight harder, pay ~60% more.
 - ~~**More gating axes:** season, weather, bait~~ — **DONE**: per-trip season +
   weather + day-phase gate the bite pool; preferred-bait weighting; all via Spot
   Packs. (True force-spawn bait still open.)

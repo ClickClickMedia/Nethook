@@ -65,7 +65,7 @@ export function emptyLogbook() {
   return {
     version: 1,
     dex: {},
-    totals: { caught: 0, weight: 0, trips: 0, casts: 0, trophies: 0 },
+    totals: { caught: 0, weight: 0, trips: 0, casts: 0, trophies: 0, aberrations: 0 },
     bestScore: 0,
     gear: { rodLevel: 0, baitLevel: 0, coins: 0 },
     rewards: { goldenRod: false },
@@ -184,9 +184,11 @@ function doCast(s, dx, dy) {
     msg(s, "Something brushed the line, then nothing.");
     return advanceTurn(s);
   }
-  s.reel = makeReel(s, species, tx, ty);
+  const aberrant = !species.junk && rand(s) < aberrationChance(s);
+  s.reel = makeReel(s, species, tx, ty, aberrant);
   s.mode = "reel";
-  msg(s, `Something's on! (${species.name}) — ${REEL_HINTS[s.reel.mode]}`);
+  if (aberrant) msg(s, `Something's WRONG with this one… (${species.name}) — ${REEL_HINTS[s.reel.mode]}`);
+  else msg(s, `Something's on! (${species.name}) — ${REEL_HINTS[s.reel.mode]}`);
   return advanceTurn(s);
 }
 
@@ -238,12 +240,21 @@ function chooseReelMode(s, sp) {
   return r < 0.25 ? "steady" : r < 0.58 ? "surge" : "pendulum"; // rare+ fight dirtier
 }
 
-function makeReel(s, sp, tx, ty) {
+// Aberrations (DREDGE corrupted variants; RESEARCH.md §4.4, §7): eerie mutant
+// fish that surface mostly at low light / in murk. Tougher fight, richer reward.
+function aberrationChance(s) {
+  const phase = phaseOf(s.time);
+  let base = phase === "dusk" ? 0.1 : phase === "dawn" ? 0.06 : 0.03;
+  if (s.weather === "fog" || s.weather === "storm") base += 0.04;
+  return base;
+}
+
+function makeReel(s, sp, tx, ty, aberrant = false) {
   const mode = chooseReelMode(s, sp);
   const reel = {
     speciesId: sp.id, targetX: tx, targetY: ty,
-    stamina: sp.strength, maxStamina: sp.strength,
-    tension: 0, maxTension: 100, mode,
+    stamina: sp.strength + (aberrant ? 2 : 0), maxStamina: sp.strength + (aberrant ? 2 : 0),
+    tension: 0, maxTension: 100, mode, aberrant,
     running: false, pos: 0, vel: 0, zoneLo: 0, zoneHi: 0,
   };
   if (mode === "pendulum") {
@@ -346,6 +357,7 @@ function gradeRank(g) {
 }
 
 function landFish(s, sp) {
+  const aberrant = !!(s.reel && s.reel.aberrant);
   const [lo, hi] = sp.weightRange;
   const weight = Math.round((lo + rand(s) * (hi - lo)) * 100) / 100;
   const frac = hi > 0 ? weight / hi : 1;
@@ -353,15 +365,19 @@ function landFish(s, sp) {
   // Trophy: a top-of-range specimen (top ~15% by size, DREDGE's "Trophy") or a
   // rare gold strike — worth a +25% value bonus and a permanent logbook mark.
   const trophy = !sp.junk && (frac >= 0.85 || rand(s) < 0.02);
+  const name = aberrant ? `Aberrant ${sp.name}` : sp.name;
   let points = Math.max(1, Math.round(weight * RARITY[sp.rarity].mult * 10));
   if (trophy) points = Math.round(points * 1.25);
-  s.caught.push({ speciesId: sp.id, name: sp.name, weight, points, rarity: sp.rarity, grade, trophy });
+  if (aberrant) points = Math.round(points * 1.6); // corrupted flesh, oddly prized
+  s.caught.push({ speciesId: sp.id, name, weight, points, rarity: sp.rarity, grade, trophy, aberrant });
   s.score += points;
   s.inventory.coins += points;
-  recordCatch(s.logbook, sp, weight, grade, trophy);
+  recordCatch(s.logbook, sp, weight, grade, trophy, aberrant);
   // remove the visible fish, if any, from the target tile
   s.world.fish = s.world.fish.filter((f) => !(f.x === s.reel.targetX && f.y === s.reel.targetY));
-  if (trophy) {
+  if (aberrant) {
+    msg(s, `🜂 ABERRATION — ${name}, ${weight}kg [${grade}]!  +${points} pts`);
+  } else if (trophy) {
     msg(s, `🏆 TROPHY ${sp.name} — ${weight}kg, grade ${grade}! +${points} pts`);
   } else {
     const tag = sp.junk ? "Fished up" : "LANDED";
@@ -391,16 +407,18 @@ function checkDexReward(s) {
   msg(s, `🎣✨ LOGBOOK COMPLETE for ${s.world.spotName}! The Golden Rod is yours.`);
 }
 
-export function recordCatch(logbook, sp, weight, grade = null, trophy = false) {
-  const d = logbook.dex[sp.id] || { name: sp.name, count: 0, bestWeight: 0, rarity: sp.rarity, bestGrade: null, trophies: 0 };
+export function recordCatch(logbook, sp, weight, grade = null, trophy = false, aberrant = false) {
+  const d = logbook.dex[sp.id] || { name: sp.name, count: 0, bestWeight: 0, rarity: sp.rarity, bestGrade: null, trophies: 0, aberrations: 0 };
   d.count++;
   d.bestWeight = Math.max(d.bestWeight, weight);
   if (grade && gradeRank(grade) > gradeRank(d.bestGrade)) d.bestGrade = grade;
   if (trophy) d.trophies = (d.trophies || 0) + 1;
+  if (aberrant) d.aberrations = (d.aberrations || 0) + 1;
   logbook.dex[sp.id] = d;
   logbook.totals.caught++;
   logbook.totals.weight = Math.round((logbook.totals.weight + weight) * 100) / 100;
   if (trophy) logbook.totals.trophies = (logbook.totals.trophies || 0) + 1;
+  if (aberrant) logbook.totals.aberrations = (logbook.totals.aberrations || 0) + 1;
 }
 
 function openShop(s) {

@@ -318,4 +318,24 @@ function ok(cond, label) {
   ok(sawDeep, "procedural lakes carve deep water for deep-habitat fish");
 }
 
+// 16. Aberration variants
+{
+  // Same seed + species + hand-built reel: the only difference is the aberrant
+  // flag, so weight (and thus the trophy roll) matches and points compare cleanly.
+  const base = newGame({ seed: "aber-test" });
+  base.mode = "reel";
+  base.reel = { speciesId: "perch", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
+  const aberInput = structuredClone(base);
+  aberInput.reel.aberrant = true;
+
+  const normal = step(base, { type: "reel" });
+  const aber = step(aberInput, { type: "reel" });
+
+  ok(aber.caught[0].aberrant === true && normal.caught[0].aberrant === false, "the aberration flag rides through to the catch");
+  ok(aber.caught[0].name.startsWith("Aberrant "), "an aberration is named distinctly");
+  ok(aber.caught[0].points > normal.caught[0].points, "an aberration is worth more than the plain catch");
+  ok(aber.logbook.totals.aberrations === 1 && normal.logbook.totals.aberrations === 0, "aberrations are counted in totals");
+  ok(aber.logbook.dex.perch.aberrations === 1, "aberrations are counted per species in the dex");
+}
+
 console.log(`OK — ${passed} assertions passed.`);

@@ -64,6 +64,8 @@ Claude kicks off a long command (once per session).
 - **Grades & trophies**: every catch is graded **F→SSS** by how big it is for its
   species. A top-of-range specimen (or a rare gold strike) lands a **🏆 trophy**
   worth a value bonus — the logbook remembers your best grade and trophy count.
+- **Aberrations**: now and then — mostly at **dusk** or in **fog** — something
+  *wrong* takes the hook. **🜂 Aberrant** variants fight harder and pay far more.
 - **Logbook** (persistent): species dex, biggest catches, best grades, trophies,
   totals, best score — saved under `$XDG_DATA_HOME/nethook` (or `~/.local/share/nethook`).
 
@@ -85,7 +87,7 @@ trusted.
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 68 assertions over the pure core
+npm test        # node game/selftest.mjs — 73 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

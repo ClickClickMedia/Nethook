@@ -67,7 +67,8 @@ export function render(state, { color = true } = {}) {
   if (state.mode === "reel" && state.reel) {
     const sp = state.speciesById[state.reel.speciesId];
     const mode = state.reel.mode || "steady";
-    lines.push(`  ON THE LINE: ${sp.name}  ${paint(`(${MODE_LABEL[mode]})`, "1;35", color)}`);
+    const aber = state.reel.aberrant ? paint("🜂 ABERRATION ", "1;95", color) : "";
+    lines.push(`  ON THE LINE: ${aber}${sp.name}  ${paint(`(${MODE_LABEL[mode]})`, "1;35", color)}`);
     lines.push(`  TENSION  ${bar(state.reel.tension, state.reel.maxTension, 24, color, 31)} ${Math.round(state.reel.tension)}%`);
     lines.push(`  FIGHT    ${bar(state.reel.stamina, state.reel.maxStamina, 24, color, 33)}`);
     if (mode === "surge") {
@@ -88,9 +89,12 @@ export function render(state, { color = true } = {}) {
   } else if (state.mode === "gameover") {
     lines.push(paint(`  ☀️  DUSK — trip over. Score ${state.score}  (best ${state.logbook.bestScore})`, "1;33", color));
     const tripTrophies = state.caught.filter((c) => c.trophy).length;
+    const tripAber = state.caught.filter((c) => c.aberrant).length;
+    const flags = `${tripTrophies ? ` 🏆${tripTrophies}` : ""}${tripAber ? ` 🜂${tripAber}` : ""}`;
     lines.push(
-      `  Caught this trip: ${state.caught.length}${tripTrophies ? ` (🏆${tripTrophies})` : ""}  |  ` +
-        `Dex: ${Object.keys(state.logbook.dex).length} species  |  Trophies: ${state.logbook.totals.trophies || 0}`,
+      `  Caught this trip: ${state.caught.length}${flags}  |  ` +
+        `Dex: ${Object.keys(state.logbook.dex).length} species  |  ` +
+        `Trophies: ${state.logbook.totals.trophies || 0}  |  Aberrations: ${state.logbook.totals.aberrations || 0}`,
     );
     lines.push("  [n] new trip   [q] quit");
   } else {
