@@ -1,10 +1,18 @@
 {
   "name": "nethook",
   "description": "A NetHack-style ASCII fishing roguelike to play in a second terminal window while Claude Code is busy. /gofish opens it; a hook pings you when Claude is done. Generate playable real-world fishing spots with /nethook:spot.",
-  "version": "0.1.0",
-  "author": { "name": "ClickClickMedia" },
+  "version": "0.2.0",
+  "author": {
+    "name": "ClickClickMedia"
+  },
   "homepage": "https://github.com/ClickClickMedia/Nethook",
   "repository": "https://github.com/ClickClickMedia/Nethook",
   "license": "MIT",
-  "keywords": ["fun", "game", "roguelike", "fishing", "dead-time"]
+  "keywords": [
+    "fun",
+    "game",
+    "roguelike",
+    "fishing",
+    "dead-time"
+  ]
 }

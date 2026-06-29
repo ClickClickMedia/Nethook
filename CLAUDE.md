@@ -22,6 +22,9 @@ The game is split so the logic is testable without a terminal:
   map or a procedural lake. Pure given an rng state. Tile semantics + helpers
   (`isWater`, `isWalkable`, `tileHabitat`, `tileAt`).
 - `game/rng.mjs` — seeded mulberry32. `rand(state)` advances `state.rngState`.
+- `game/solunar.mjs` — **pure** moon-phase / solunar-feeding + seasonal water-temp
+  model. Functions of an epoch timestamp passed in (the clock is read only in
+  `index.mjs`), so reducers stay pure. Drives the grounded bite model.
 - `game/fish.mjs` — built-in species table, rods, bait, rarity tiers (fallback
   content when no pack is loaded).
 - `game/pack.mjs` — Spot Pack schema + `validatePack()` + loaders. Bad packs are
@@ -48,7 +51,7 @@ The game is split so the logic is testable without a terminal:
 
 ## Commands
 ```bash
-npm test                              # node game/selftest.mjs (92 assertions)
+npm test                              # node game/selftest.mjs (98 assertions)
 node game/index.mjs ["Spot Name"]     # play locally (needs a real TTY)
 node game/launch.mjs --dry-run        # show the window-spawn plan for this env
 NETHOOK_FORCE_ENV=macos node game/launch.mjs --dry-run   # force an env

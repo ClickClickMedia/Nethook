@@ -106,10 +106,21 @@ export function render(state, { color = true } = {}) {
         `Dex: ${Object.keys(state.logbook.dex).length} species  |  ` +
         `Trophies: ${state.logbook.totals.trophies || 0}  |  Aberrations: ${state.logbook.totals.aberrations || 0}`,
     );
+    const bounties = state.bounties || [];
+    if (bounties.length) {
+      const done = bounties.filter((b) => b.done).length;
+      lines.push(`  Bounties: ${done}/${bounties.length}  ${bounties.map((b) => `${b.done ? "✔" : "✗"} ${b.desc}`).join("  ·  ")}`);
+    }
     lines.push("  [n] new trip   [q] quit");
   } else {
-    // message log
-    for (const m of state.messages.slice(-3)) lines.push(`  ${m}`);
+    // bounties (this trip's goals) then the message log
+    if (state.bounties && state.bounties.length) {
+      const bs = state.bounties
+        .map((b) => paint(`${b.done ? "✔" : "○"} ${b.desc} (+${b.reward}c)`, b.done ? "32" : "90", color))
+        .join("   ");
+      lines.push(`  ${bs}`);
+    }
+    for (const m of state.messages.slice(-2)) lines.push(`  ${m}`);
   }
 
   lines.push("");

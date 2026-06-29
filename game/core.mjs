@@ -109,6 +109,8 @@ export function newGame({ seed = "nethook", pack = null, logbook = null, env = n
     : env && isNum(env.solunar) ? env.solunar
       : null; // null = unknown → neutral, no effect on the bite
 
+  const bounties = rollBounties(seedState); // two per-trip goals (replayability)
+
   return {
     seed,
     rngState: seedState.rngState, // continue the same stream
@@ -118,6 +120,7 @@ export function newGame({ seed = "nethook", pack = null, logbook = null, env = n
     weather,
     waterTemp: Math.round(waterTemp * 10) / 10,
     solunar,
+    bounties,
     player: { ...world.playerStart },
     time: { turn: 0, maxTurns: DEFAULT_DAYLIGHT },
     inventory: {
@@ -387,6 +390,45 @@ function gradeRank(g) {
   return g ? GRADE_ORDER.indexOf(g) : -1;
 }
 
+// Per-trip bounties (RESEARCH.md §1.1 "resource management"/goals; replayability):
+// two small goals rolled each trip that pay a coin+score bonus on completion, so
+// every launch has a fresh objective beyond raw score. Pure: rolled from the rng
+// stream, evaluated against each catch. Test predicates live here (functions can't
+// ride on cloned state); only {id,desc,reward,done} is stored on the trip.
+const BOUNTIES = [
+  { id: "rare", desc: "Land a rare-or-better fish", reward: 30, test: (c) => RARITY[c.rarity].mult >= 5 && !c.junk },
+  { id: "trophy", desc: "Land a trophy catch", reward: 35, test: (c) => !!c.trophy },
+  { id: "aberration", desc: "Hook an aberration", reward: 45, test: (c) => !!c.aberrant },
+  { id: "lunker", desc: "Land a fish over 5kg", reward: 30, test: (c) => c.weight >= 5 },
+  { id: "newdex", desc: "Log a new species", reward: 25, test: (c, s) => s.logbook.dex[c.speciesId] && s.logbook.dex[c.speciesId].count === 1 },
+  { id: "fivecatch", desc: "Land 5 fish this trip", reward: 25, test: (c, s) => s.caught.length >= 5 },
+];
+const BOUNTY_TEST = Object.fromEntries(BOUNTIES.map((b) => [b.id, b.test]));
+
+function rollBounties(seedState) {
+  const pool = BOUNTIES.slice();
+  const out = [];
+  for (let i = 0; i < 2 && pool.length; i++) {
+    const [t] = pool.splice(Math.floor(rand(seedState) * pool.length), 1);
+    out.push({ id: t.id, desc: t.desc, reward: t.reward, done: false });
+  }
+  return out;
+}
+
+function checkBounties(s, entry) {
+  if (!s.bounties) return;
+  for (const b of s.bounties) {
+    if (b.done) continue;
+    const test = BOUNTY_TEST[b.id];
+    if (test && test(entry, s)) {
+      b.done = true;
+      s.inventory.coins += b.reward;
+      s.score += b.reward;
+      msg(s, `✔ Bounty complete: ${b.desc}! +${b.reward}c`);
+    }
+  }
+}
+
 function landFish(s, sp) {
   const aberrant = !!(s.reel && s.reel.aberrant);
   const [lo, hi] = sp.weightRange;
@@ -400,10 +442,12 @@ function landFish(s, sp) {
   let points = Math.max(1, Math.round(weight * RARITY[sp.rarity].mult * 10));
   if (trophy) points = Math.round(points * 1.25);
   if (aberrant) points = Math.round(points * 1.6); // corrupted flesh, oddly prized
-  s.caught.push({ speciesId: sp.id, name, weight, points, rarity: sp.rarity, grade, trophy, aberrant });
+  const entry = { speciesId: sp.id, name, weight, points, rarity: sp.rarity, grade, trophy, aberrant };
+  s.caught.push(entry);
   s.score += points;
   s.inventory.coins += points;
   recordCatch(s.logbook, sp, weight, grade, trophy, aberrant);
+  checkBounties(s, entry);
   // remove the visible fish, if any, from the target tile
   s.world.fish = s.world.fish.filter((f) => !(f.x === s.reel.targetX && f.y === s.reel.targetY));
   if (aberrant) {

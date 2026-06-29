@@ -1,6 +1,6 @@
 {
   "name": "nethook",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "A NetHack-style ASCII fishing roguelike for Claude Code dead-time.",

@@ -64,6 +64,8 @@ Claude kicks off a long command (once per session).
 - **Complete the logbook**: catch every (non-junk) species at a spot and you earn
   the **Golden Rod** — the best rod in the game, granted once and kept for good.
 - **Trips**: each launch is one bounded daylight session; at dusk it scores.
+- **Bounties**: every trip rolls **two goals** (land a trophy, log a new species,
+  hook an aberration…) that pay a coin + score bonus — a fresh objective each launch.
 - **Grades & trophies**: every catch is graded **F→SSS** by how big it is for its
   species. A top-of-range specimen (or a rare gold strike) lands a **🏆 trophy**
   worth a value bonus — the logbook remembers your best grade and trophy count.
@@ -98,7 +100,7 @@ trip's `°C` and a 🌑🌓🌕 feeding indicator.
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 92 assertions over the pure core
+npm test        # node game/selftest.mjs — 98 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

@@ -399,4 +399,30 @@ function ok(cond, label) {
   ok(rotting.pot.coins < fresh.pot.coins, "a rotting haul is worth less than a fresh one (caps idle farming)");
 }
 
+// 19. Per-trip bounties
+{
+  const g = newGame({ seed: "bounty-roll" });
+  ok(Array.isArray(g.bounties) && g.bounties.length === 2, "each trip rolls two bounties");
+  ok(g.bounties[0].id !== g.bounties[1].id, "a trip's two bounties are distinct");
+  ok(g.bounties.every((b) => b.done === false), "bounties start incomplete");
+
+  // a qualifying catch completes its bounty and pays the reward
+  let s = newGame({ seed: "bounty-lunker" });
+  s.bounties = [{ id: "lunker", desc: "Land a fish over 5kg", reward: 30, done: false }];
+  s.mode = "reel";
+  s.reel = { speciesId: "sturgeon", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
+  const coinsBefore = s.inventory.coins;
+  s = step(s, { type: "reel" }); // sturgeon weighs 10–80kg → always a lunker
+  ok(s.bounties[0].done === true, "a qualifying catch completes its bounty");
+  ok(s.inventory.coins >= coinsBefore + 30, "completing a bounty pays its coin reward");
+
+  // a non-qualifying catch leaves the bounty open
+  let t = newGame({ seed: "bounty-miss" });
+  t.bounties = [{ id: "lunker", desc: "Land a fish over 5kg", reward: 30, done: false }];
+  t.mode = "reel";
+  t.reel = { speciesId: "minnow", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
+  t = step(t, { type: "reel" }); // minnow is far under 5kg
+  ok(t.bounties[0].done === false, "a non-qualifying catch leaves the bounty open");
+}
+
 console.log(`OK — ${passed} assertions passed.`);
