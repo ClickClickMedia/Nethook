@@ -4,7 +4,7 @@
 > while Claude Code is busy. When Claude finishes, the game pings you to reel in.
 
 ```
-  🎣 NETHOOK — Lake Taupō
+  🎣 NETHOOK — Lake Taupō   🌧rain · autumn · 🌆dusk · 12°C · 🌕feeding
 
   ...........~~~~~~..........
   ........~~~~≈≈≈≈~~~~,......
@@ -13,9 +13,10 @@
   ......~~≈≈≈≈≈# ≈≈≈≈~~......
   ......$..~~~~≈≈≈~~~~.......
 
-  Not even a nibble.
+  ○ Land a trophy catch (+35c)   ✔ Log a new species (+25c)
+  🏆 TROPHY Rainbow Trout — 3.1kg, grade S!  +186 pts
 
-  ☀ ██████████░░░░░░  🎣Bamboo Rod  🪱Worms  ◎0c  ★0   …Claude is thinking
+  ☀ ██████████░░░░░░  🎣Heirloom Rod  🪱Spinner Lure  ◎240c  ★186   ✅ Claude ready — reel in!
   move: hjkl/arrows · f+dir: cast · $: shanty · q: quit
 ```
 

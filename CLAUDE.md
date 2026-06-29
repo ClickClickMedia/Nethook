@@ -63,6 +63,8 @@ no-semicolon-free style already present (match the surrounding files).
 ## Common tasks
 - **Add a built-in species:** append to `BUILTIN_SPECIES` in `game/fish.mjs`
   (fields: id, name, glyph, rarity, habitat, weightRange, strength, behavior).
+  Spot Pack species also accept optional `time`/`season`/`weather`/`bait` gates and
+  `tempOptimum`/`tempRange` (sanitized in `validatePack()`); see `commands/spot.md`.
 - **Add a built-in Spot Pack:** drop a JSON file in `game/packs/` matching the
   schema in `game/pack.mjs`; run `node game/packcheck.mjs` on it; the selftest
   asserts at least two valid built-in packs exist.

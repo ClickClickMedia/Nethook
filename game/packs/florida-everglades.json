@@ -3,11 +3,11 @@
   "location": "Florida, USA",
   "notes": "A maze of sawgrass, mangrove channels and gator holes. Largemouth bass and exotic peacock bass prowl the warm shallows; something with teeth always lurks.",
   "species": [
-    { "name": "Largemouth Bass", "glyph": "F", "rarity": "uncommon", "habitat": "reeds", "weightRange": [0.5, 5.0], "strength": 4, "behavior": "Explosive topwater strikes around cover.", "realInfo": "Best on plastic worms and frogs worked through the pads at first light." },
-    { "name": "Peacock Bass", "glyph": "F", "rarity": "rare", "habitat": "shallow", "weightRange": [0.8, 4.0], "strength": 5, "behavior": "Aggressive exotic that hammers fast-moving lures.", "realInfo": "Introduced to canals in the '80s; loves warm, bright midday water." },
+    { "name": "Largemouth Bass", "glyph": "F", "rarity": "uncommon", "habitat": "reeds", "weightRange": [0.5, 5.0], "strength": 4, "tempOptimum": 22, "tempRange": 9, "time": ["dawn", "dusk"], "bait": ["lure"], "behavior": "Explosive topwater strikes around cover.", "realInfo": "Best on plastic worms and frogs worked through the pads at first light." },
+    { "name": "Peacock Bass", "glyph": "F", "rarity": "rare", "habitat": "shallow", "weightRange": [0.8, 4.0], "strength": 5, "tempOptimum": 28, "tempRange": 9, "time": ["day"], "bait": ["shiny"], "behavior": "Aggressive exotic that hammers fast-moving lures.", "realInfo": "Introduced to canals in the '80s; loves warm, bright midday water." },
     { "name": "Bluegill", "glyph": "f", "rarity": "common", "habitat": "shallow", "weightRange": [0.05, 0.4], "strength": 1, "behavior": "Panfish swarming the margins." },
-    { "name": "Florida Gar", "glyph": "e", "rarity": "uncommon", "habitat": "reeds", "weightRange": [1.0, 4.0], "strength": 5, "behavior": "Armoured ambusher that rolls at the surface." },
-    { "name": "Bull Shark", "glyph": "S", "rarity": "legendary", "habitat": "deep", "weightRange": [40.0, 130.0], "strength": 9, "behavior": "Yes — they swim up the brackish channels. Hold on.", "realInfo": "Bull sharks tolerate freshwater and range far up Florida's rivers." },
+    { "name": "Florida Gar", "glyph": "e", "rarity": "uncommon", "habitat": "reeds", "weightRange": [1.0, 4.0], "strength": 5, "tempOptimum": 26, "tempRange": 9, "behavior": "Armoured ambusher that rolls at the surface." },
+    { "name": "Bull Shark", "glyph": "S", "rarity": "legendary", "habitat": "deep", "weightRange": [40.0, 130.0], "strength": 9, "tempOptimum": 26, "tempRange": 11, "behavior": "Yes — they swim up the brackish channels. Hold on.", "realInfo": "Bull sharks tolerate freshwater and range far up Florida's rivers." },
     { "name": "Lost Flip-Flop", "glyph": "}", "rarity": "common", "habitat": "any", "weightRange": [0.1, 0.3], "strength": 1, "behavior": "Floridian sediment.", "junk": true }
   ],
   "tackle": [
@@ -19,5 +19,5 @@
     "Peacock bass feed in bright midday sun, opposite to most species.",
     "If the drag screams and won't stop… you didn't hook a bass."
   ],
-  "hints": { "timeOfDay": "dawn", "season": "wet" }
+  "hints": { "baseTemp": 26, "seasons": ["spring", "summer", "autumn", "winter"], "weather": ["clear", "cloudy", "rain", "fog", "wind"] }
 }
