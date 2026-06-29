@@ -1,0 +1,29 @@
+name: "💡 Idea / feedback / Spot Pack"
+description: A feature idea, gameplay feedback, or a real-world spot you'd love to see.
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of idea is this?
+      options:
+        - Gameplay feedback (feel, difficulty, fun)
+        - Feature idea
+        - A Spot Pack I'd like (a real lake/river/coast)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: For a Spot Pack request, name the place and any signature fish / tackle / seasons.
+      placeholder: "A pendulum fight is fun but a bit fast on big fish… / Add Lake Biwa, Japan — koi, bass, ayu in summer…"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it make the game better?
+    validations:
+      required: false

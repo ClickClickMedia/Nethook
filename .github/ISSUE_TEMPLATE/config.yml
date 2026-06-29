@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 How to test Nethook
+    url: https://github.com/ClickClickMedia/Nethook/blob/main/TESTING.md
+    about: Install, run, and what to look for when testing.
+  - name: 🛠 Contributing (new Spot Packs, species, fixes)
+    url: https://github.com/ClickClickMedia/Nethook/blob/main/CONTRIBUTING.md
+    about: Dev setup, the keep-the-core-pure rule, and how to open a PR.

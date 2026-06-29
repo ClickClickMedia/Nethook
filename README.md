@@ -133,3 +133,9 @@ node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```
 `game/core.mjs`, `world.mjs`, `render.mjs`, `pack.mjs`, `logbook.mjs` are pure;
 `game/index.mjs` is the only file that touches the terminal.
+
+## Testing & contributing
+Trying it out? See [TESTING.md](TESTING.md) for what to look for and how to report.
+Want to add a Spot Pack, a species, or a fix? [CONTRIBUTING.md](CONTRIBUTING.md)
+has the dev setup and the one rule that matters (keep the core pure). PRs welcome —
+new real-world Spot Packs especially. MIT licensed.

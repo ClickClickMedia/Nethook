@@ -1,0 +1,52 @@
+name: "🐛 Bug report"
+description: Something broke, rendered wrong, or didn't behave as expected.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong? Steps to reproduce if you can.
+      placeholder: "Cast at the reeds, the reel fight started, then the screen garbled…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: false
+  - type: input
+    id: spot
+    attributes:
+      label: Which spot / how were you playing?
+      placeholder: 'procedural lake, or /gofish "Lake Taupō", or node game/index.mjs'
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 15 / Ubuntu 24.04 / Windows 11 + WSL"
+    validations:
+      required: true
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal app
+      placeholder: "iTerm2 / Windows Terminal / gnome-terminal / tmux"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version (`node --version`)
+      placeholder: "v20.11.0"
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else? (screenshot, error text, `npm test` output)
+    validations:
+      required: false
