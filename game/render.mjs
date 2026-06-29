@@ -127,7 +127,9 @@ function pendulumTrack(reel, width, color) {
 function nextLabel(state, kind) {
   if (kind === "rod") {
     const next = RODS[state.inventory.rodLevel + 1] || null;
-    return next ? `Upgrade rod → ${next.name} (${next.price}c)` : "Rod maxed";
+    if (!next) return "Rod maxed";
+    if (next.reward) return "Rod maxed (Golden Rod is earned, not bought)";
+    return `Upgrade rod → ${next.name} (${next.price}c)`;
   }
   const next = BAITS[state.inventory.baitLevel + 1] || null;
   return next ? `Upgrade bait → ${next.name} (${next.price}c)` : "Bait maxed";

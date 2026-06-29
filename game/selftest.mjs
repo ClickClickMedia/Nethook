@@ -12,6 +12,7 @@ import { saveLogbook, loadLogbook } from "./logbook.mjs";
 import { validatePack, listPacks } from "./pack.mjs";
 import { render } from "./render.mjs";
 import { seedFrom } from "./rng.mjs";
+import { RODS } from "./fish.mjs";
 
 let passed = 0;
 function ok(cond, label) {
@@ -232,6 +233,36 @@ function ok(cond, label) {
   s.reel = { speciesId: "perch", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
   s = step(s, { type: "reel" });
   ok(typeof s.caught[0].grade === "string" && "trophy" in s.caught[0], "a landed catch carries a grade and trophy flag");
+}
+
+// 13. Dex-completion reward (Golden Rod)
+{
+  let s = newGame({ seed: "dex-reward" });
+  const need = s.world.species.filter((sp) => !sp.junk);
+  ok(need.length >= 2, "the spot has multiple non-junk species to complete");
+  // pre-fill the dex for every non-junk species except the last
+  for (const sp of need.slice(0, -1)) {
+    s.logbook.dex[sp.id] = { name: sp.name, count: 1, bestWeight: 1, rarity: sp.rarity, bestGrade: "C", trophies: 0 };
+  }
+  ok(!s.logbook.rewards.goldenRod, "Golden Rod is not granted before the dex is complete");
+
+  // land the final missing species (hand-built weak reel so it lands in one pull)
+  const last = need[need.length - 1];
+  s.mode = "reel";
+  s.reel = { speciesId: last.id, targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
+  s = step(s, { type: "reel" });
+  ok(s.logbook.rewards.goldenRod === true, "completing the spot's dex grants the Golden Rod");
+  const gi = RODS.findIndex((r) => r.reward);
+  ok(s.inventory.rodLevel === gi, "the Golden Rod is auto-equipped on completion");
+
+  // the reward rod can never be bought from the shop
+  let b = newGame({ seed: "no-buy-golden" });
+  b.inventory.coins = 1e6;
+  b.inventory.rodLevel = RODS.length - 2; // standing on the best purchasable rod
+  b.player = { ...b.world.shop };
+  b = step(b, { type: "openShop" });
+  b = step(b, { type: "buyRod" });
+  ok(b.inventory.rodLevel === RODS.length - 2, "the Golden Rod is never purchasable from the shanty");
 }
 
 console.log(`OK — ${passed} assertions passed.`);

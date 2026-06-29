@@ -32,6 +32,7 @@ export function loadLogbook(dataDir = resolveDataDir()) {
       ...raw,
       totals: { ...base.totals, ...(raw.totals || {}) },
       gear: { ...base.gear, ...(raw.gear || {}) },
+      rewards: { ...base.rewards, ...(raw.rewards || {}) },
       dex: raw.dex || {},
     };
   } catch {

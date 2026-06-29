@@ -43,6 +43,8 @@ export const RODS = [
   { id: "bamboo", name: "Bamboo Rod", biteBonus: 0, tensionEase: 0, price: 0 },
   { id: "carbon", name: "Carbon Rod", biteBonus: 0.08, tensionEase: 4, price: 60 },
   { id: "legendary", name: "Heirloom Rod", biteBonus: 0.18, tensionEase: 9, price: 240 },
+  // Earned, not bought: granted for completing a spot's logbook (see core.mjs).
+  { id: "golden", name: "Golden Rod", biteBonus: 0.28, tensionEase: 13, price: null, reward: true },
 ];
 
 export const BAITS = [

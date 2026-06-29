@@ -16,6 +16,7 @@ export function emptyLogbook() {
     totals: { caught: 0, weight: 0, trips: 0, casts: 0, trophies: 0 },
     bestScore: 0,
     gear: { rodLevel: 0, baitLevel: 0, coins: 0 },
+    rewards: { goldenRod: false },
   };
 }
 
@@ -303,9 +304,28 @@ function landFish(s, sp) {
     const tag = sp.junk ? "Fished up" : "LANDED";
     msg(s, `${tag} a ${sp.name} — ${weight}kg [${grade}]  +${points} pts`);
   }
+  checkDexReward(s);
   s.mode = "explore";
   s.reel = null;
   return s;
+}
+
+// AC:NH "complete the Critterpedia → golden rod" loop: catch every non-junk
+// species available at the current spot and the Golden Rod is granted once,
+// persisted in the logbook so it carries across trips. Pure; no I/O.
+function checkDexReward(s) {
+  if (s.logbook.rewards && s.logbook.rewards.goldenRod) return;
+  const need = s.world.species.filter((sp) => !sp.junk);
+  if (!need.length) return;
+  const complete = need.every((sp) => s.logbook.dex[sp.id] && s.logbook.dex[sp.id].count > 0);
+  if (!complete) return;
+  s.logbook.rewards = { ...(s.logbook.rewards || {}), goldenRod: true };
+  const gi = RODS.findIndex((r) => r.reward);
+  if (gi >= 0 && s.inventory.rodLevel < gi) {
+    s.inventory.rodLevel = gi;
+    syncGear(s);
+  }
+  msg(s, `🎣✨ LOGBOOK COMPLETE for ${s.world.spotName}! The Golden Rod is yours.`);
 }
 
 export function recordCatch(logbook, sp, weight, grade = null, trophy = false) {
@@ -334,7 +354,7 @@ function buy(s, kind) {
   if (s.mode !== "shop") return s;
   if (kind === "rod") {
     const next = RODS[s.inventory.rodLevel + 1];
-    if (!next) return (msg(s, "Best rod already in hand."), s);
+    if (!next || next.reward) return (msg(s, "Best rod for sale already in hand."), s);
     if (s.inventory.coins < next.price) return (msg(s, `Need ${next.price} coins for the ${next.name}.`), s);
     s.inventory.coins -= next.price;
     s.inventory.rodLevel++;
