@@ -28,24 +28,50 @@ A plugin **can't** render a live game inside Claude Code's own terminal (Claude
 owns that TTY), so Nethook runs as a **standalone game in its own window**. That's
 the authentic roguelike model anyway.
 
-## Install (from this repo's marketplace — no approval needed)
+## Requirements
+- **[Claude Code](https://claude.com/claude-code)** (the CLI) — to install it as a plugin.
+- **Node.js ≥ 18** — the game is plain Node, zero dependencies.
+- A real terminal you can open a second window/tab/pane in (the game runs in its
+  own window — see [Why](#why)). Works on macOS, Linux, WSL, and Windows Terminal.
+
+## Install & play (as a Claude Code plugin)
+Run these two slash commands inside Claude Code — no build, no `npm install`, no
+marketplace approval needed:
+
 ```
-/plugin marketplace add ClickClickMedia/Nethook
-/plugin install nethook@nethook
+/plugin marketplace add ClickClickMedia/Nethook   # 1. register this repo's marketplace
+/plugin install nethook@nethook                    # 2. install the plugin (name@marketplace)
 ```
 
-## Play
-- **`/gofish`** — opens Nethook in a new terminal window (detects tmux / Windows
-  Terminal / WSL / macOS / Linux; prints a copy-paste command if it can't).
-  Optionally pass a spot: `/gofish "Lake Taupō"`.
-- **`/nethook:spot "<real place>"`** — Claude generates a playable **Spot Pack** for
-  a real location (ASCII map, real species, real tackle, real strategy) and installs
-  it. Then `/gofish "<place>"`.
-- Or run it directly in any terminal: `node game/index.mjs ["Spot Name"]`.
+That's it. Now, any time Claude is busy and you want something to do:
+
+```
+/gofish                  # opens Nethook in a NEW terminal window
+/gofish "Lake Taupō"     # …or jump straight into a specific spot
+```
+
+- If `/gofish` can't auto-open a window (headless or an unrecognised terminal) it
+  prints a **copy-paste command** instead — paste it into any separate tab/pane.
+- **`/nethook:spot "<real place>"`** has Claude generate a playable **Spot Pack**
+  for a real location (ASCII map, real species, real tackle, real strategy) and
+  installs it; then `/gofish "<place>"`.
 
 While Claude works, a `Stop` hook flips the game's status bar to **"✅ Claude ready
-— reel in!"** (with a terminal bell). A `PreToolUse` hook nudges you to go fish when
-Claude kicks off a long command (once per session).
+— reel in!"** (with a terminal bell), and a `PreToolUse` hook nudges you to go fish
+when Claude kicks off a long command (once per session).
+
+To update later: `/plugin marketplace update nethook` then re-run `/plugin install
+nethook@nethook`. To remove it: `/plugin uninstall nethook@nethook`.
+
+## Run it directly (without the plugin)
+You don't need Claude Code to play — clone and run:
+```
+git clone https://github.com/ClickClickMedia/Nethook && cd Nethook
+node game/index.mjs                 # play the procedural lake
+node game/index.mjs "Lake Taupō"    # …or a named built-in spot
+```
+(The plugin's only extra is the `/gofish` window-launcher and the Claude-ready
+status handshake; the game itself is the same.)
 
 ## Gameplay
 - **Move** with `hjkl` or arrows; you walk the shore/dock (`@`).
