@@ -2,9 +2,11 @@
 // scripted actions and asserts outcomes. Run: `node game/selftest.mjs`.
 // Exits non-zero on the first failed assertion.
 
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 import { newGame, step, endTrip, emptyLogbook, recordCatch, gradeFor, phaseOf, isSpeciesAllowed, SEASONS, WEATHERS, tempSuit } from "./core.mjs";
 import { moonIllumination, solunarScore, seasonBaseTemp, REF_NEW_MOON_MS } from "./solunar.mjs";
@@ -496,6 +498,31 @@ function ok(cond, label) {
   ok(lb.dex.boot.junk === true && !lb.dex.trout.junk, "junk catches are flagged in the dex");
   const real = Object.values(lb.dex).filter((d) => !d.junk).length;
   ok(real === 1, "the species count excludes junk (1 real species, not 2)");
+}
+
+// 24. The "Claude is done" handshake — the whole point of the plugin
+{
+  // Render side: the status bar reflects the polled claudeStatus.
+  let s = newGame({ seed: "claude-ping" });
+  const plain = (st) => render(st, { color: false });
+  ok(!plain(s).includes("Claude ready") && !plain(s).includes("Claude is thinking"),
+    "no Claude indicator before any status arrives");
+  s = step(s, { type: "claudeStatus", status: "working" });
+  ok(plain(s).includes("…Claude is thinking"), "working status shows '…Claude is thinking'");
+  s = step(s, { type: "claudeStatus", status: "done" });
+  ok(plain(s).includes("Claude ready — reel in!"), "done status flips the bar to '✅ Claude ready — reel in!'");
+
+  // Hook side: status.mjs writes the exact file the game polls (NETHOOK_STATUS =
+  // CLAUDE_PLUGIN_DATA/status.json per commands/gofish.md), closing the loop.
+  const dir = mkdtempSync(join(tmpdir(), "nethook-hook-"));
+  const statusScript = join(dirname(fileURLToPath(import.meta.url)), "..", "hooks", "status.mjs");
+  const env = { ...process.env, CLAUDE_PLUGIN_DATA: dir };
+  execFileSync("node", [statusScript, "done"], { env });
+  ok(JSON.parse(readFileSync(join(dir, "status.json"), "utf8")).state === "done",
+    "the Stop hook writes {state:'done'} to status.json");
+  execFileSync("node", [statusScript, "working"], { env });
+  ok(JSON.parse(readFileSync(join(dir, "status.json"), "utf8")).state === "working",
+    "the UserPromptSubmit hook writes {state:'working'}");
 }
 
 console.log(`OK — ${passed} assertions passed.`);
