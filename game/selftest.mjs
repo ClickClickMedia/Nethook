@@ -6,7 +6,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { newGame, step, endTrip, emptyLogbook, recordCatch, gradeFor } from "./core.mjs";
+import { newGame, step, endTrip, emptyLogbook, recordCatch, gradeFor, phaseOf, isSpeciesAllowed, SEASONS, WEATHERS } from "./core.mjs";
 import { buildWorld, isWalkable, isWater, tileAt, TILE } from "./world.mjs";
 import { saveLogbook, loadLogbook } from "./logbook.mjs";
 import { validatePack, listPacks } from "./pack.mjs";
@@ -263,6 +263,43 @@ function ok(cond, label) {
   b = step(b, { type: "openShop" });
   b = step(b, { type: "buyRod" });
   ok(b.inventory.rodLevel === RODS.length - 2, "the Golden Rod is never purchasable from the shanty");
+}
+
+// 14. Environment gating (time / season / weather / bait)
+{
+  ok(phaseOf({ turn: 0, maxTurns: 90 }) === "dawn", "the day opens at dawn");
+  ok(phaseOf({ turn: 45, maxTurns: 90 }) === "day", "midday is the plain 'day' phase");
+  ok(phaseOf({ turn: 89, maxTurns: 90 }) === "dusk", "the day closes at dusk");
+
+  const env = { phase: "dusk", season: "summer", weather: "rain" };
+  ok(isSpeciesAllowed({}, env), "an ungated species is always allowed");
+  ok(isSpeciesAllowed({ time: ["dusk"] }, env), "a matching time gate passes");
+  ok(!isSpeciesAllowed({ time: ["dawn"] }, env), "a non-matching time gate blocks");
+  ok(isSpeciesAllowed({ season: ["summer"], weather: ["rain"] }, env), "matching season+weather pass together");
+  ok(!isSpeciesAllowed({ weather: ["clear"] }, env), "a non-matching weather gate blocks");
+  ok(isSpeciesAllowed({ time: ["any"] }, env), "'any' clears a gate");
+
+  // every trip rolls a valid season + weather, deterministically
+  const g = newGame({ seed: "env-roll" });
+  ok(SEASONS.includes(g.season) && WEATHERS.includes(g.weather), "a trip rolls a season and weather from the pools");
+  const g2 = newGame({ seed: "env-roll" });
+  ok(g2.season === g.season && g2.weather === g.weather, "the same seed rolls the same environment");
+
+  // pack gates are normalized (fall→autumn) and survive validation
+  const v = validatePack({
+    name: "Gated Cove",
+    species: [{ name: "Coelacanth", rarity: "legendary", weightRange: [20, 90],
+      weather: ["rain"], time: ["night"], season: ["fall"], bait: ["lure"] }],
+  });
+  ok(v.ok, "a pack with gated species validates");
+  const sp = v.pack.species[0];
+  ok(sp.weather.includes("rain") && sp.time.includes("night") && sp.season.includes("autumn"),
+    "pack gates are normalized (fall→autumn) and kept");
+  ok(Array.isArray(sp.bait) && sp.bait.includes("lure"), "a bait preference is kept");
+
+  // a bad gate token is dropped, leaving the species unrestricted, not rejected
+  const v2 = validatePack({ name: "Sloppy", species: [{ name: "Whatever", rarity: "common", weightRange: [1, 2], weather: ["purple"] }] });
+  ok(v2.ok && v2.pack.species[0].weather === undefined, "an unknown gate token degrades to unrestricted, not a rejection");
 }
 
 console.log(`OK — ${passed} assertions passed.`);

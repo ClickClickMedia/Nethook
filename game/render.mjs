@@ -2,8 +2,11 @@
 // output (snapshot tests / non-ANSI terminals).
 
 import { TILE } from "./world.mjs";
-import { rod, bait } from "./core.mjs";
+import { rod, bait, phaseOf } from "./core.mjs";
 import { RARITY, RODS, BAITS } from "./fish.mjs";
+
+const WEATHER_ICON = { clear: "☀", cloudy: "☁", rain: "🌧", fog: "🌫", wind: "🌬" };
+const PHASE_ICON = { dawn: "🌅", day: "🌞", dusk: "🌆" };
 
 const TILE_COLOR = {
   [TILE.LAND]: 32,    // green
@@ -30,8 +33,12 @@ export function render(state, { color = true } = {}) {
   const lines = [];
   const w = state.world.width;
 
-  // Title
-  lines.push(paint(`  🎣 NETHOOK — ${state.world.spotName}`, "1;36", color));
+  // Title (with this trip's rolled environment)
+  const phase = phaseOf(state.time);
+  const env = state.season
+    ? paint(`   ${WEATHER_ICON[state.weather] ?? ""}${state.weather ?? ""} · ${state.season} · ${PHASE_ICON[phase] ?? ""}${phase}`, "90", color)
+    : "";
+  lines.push(paint(`  🎣 NETHOOK — ${state.world.spotName}`, "1;36", color) + env);
   lines.push("");
 
   // Map with player + fish overlaid

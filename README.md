@@ -74,11 +74,18 @@ table with real behaviour, tackle, and strategy. Three ship built-in
 more with `/nethook:spot`. The engine validates every pack (`game/pack.mjs`) so a
 bad one can never crash the game; with no pack it builds a procedural lake.
 
+**Environment gating**: each trip rolls a **season** and **weather**, and the
+**day-phase** moves with the daylight clock (dawn → day → dusk). Species can gate
+themselves by `time`, `season`, `weather`, and preferred `bait`, so a spot plays
+differently trip to trip — the skrei cod run shows up in winter, the kraken only
+at foggy dusk. Dawn/dusk and rain bite better. Gates are sanitized on load, never
+trusted.
+
 ## Development
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 50 assertions over the pure core
+npm test        # node game/selftest.mjs — 65 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

@@ -13,6 +13,26 @@ import { RARITY } from "./fish.mjs";
 
 const VALID_HABITATS = new Set(["shallow", "deep", "reeds", "any"]);
 const VALID_RARITIES = new Set(Object.keys(RARITY));
+const VALID_TIMES = new Set(["dawn", "day", "dusk", "night"]);
+const VALID_SEASONS = new Set(["spring", "summer", "autumn", "winter"]);
+const VALID_WEATHER = new Set(["clear", "cloudy", "rain", "fog", "wind", "storm", "snow"]);
+
+// Normalize an optional gate field to a clean token list (or undefined =
+// unrestricted). Tolerant by design: unknown tokens are dropped, "any" clears
+// the gate, synonyms are folded — a sloppy pack degrades to "always available"
+// rather than being rejected. (We still hard-reject bad core fields below.)
+function normGate(v, valid, alias = {}) {
+  if (v == null) return undefined;
+  const arr = Array.isArray(v) ? v : [v];
+  const out = [];
+  for (const x of arr) {
+    let t = String(x).toLowerCase().trim();
+    if (alias[t]) t = alias[t];
+    if (t === "any") return undefined;
+    if (valid.has(t) && !out.includes(t)) out.push(t);
+  }
+  return out.length ? out : undefined;
+}
 
 export function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "x";
@@ -61,6 +81,15 @@ export function validatePack(raw) {
           behavior: typeof sp.behavior === "string" ? sp.behavior.slice(0, 200) : "",
           realInfo: typeof sp.realInfo === "string" ? sp.realInfo.slice(0, 200) : "",
           junk: !!sp.junk,
+          // Optional environment gates (RESEARCH.md §4.6) — sanitized, never trusted.
+          time: normGate(sp.time, VALID_TIMES),
+          season: normGate(sp.season, VALID_SEASONS, { fall: "autumn" }),
+          weather: normGate(sp.weather, VALID_WEATHER),
+          bait: Array.isArray(sp.bait)
+            ? sp.bait.map((x) => String(x).toLowerCase().trim()).filter(Boolean).slice(0, 6)
+            : typeof sp.bait === "string"
+              ? [sp.bait.toLowerCase().trim()]
+              : undefined,
         });
       }
     });

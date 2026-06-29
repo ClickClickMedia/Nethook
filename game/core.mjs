@@ -2,12 +2,64 @@
 // disk, no timers — every transition is deterministic given state.rngState, so
 // the whole game is verifiable headlessly (see selftest.mjs).
 
-import { seedFrom, rand, randint } from "./rng.mjs";
+import { seedFrom, rand, randint, pick } from "./rng.mjs";
 import { buildWorld, tileAt, tileHabitat, isWater, isWalkable, TILE } from "./world.mjs";
 import { RARITY, RODS, BAITS } from "./fish.mjs";
 
 const MAX_MESSAGES = 6;
 const DEFAULT_DAYLIGHT = 90;
+
+// Environment gating axes (RESEARCH.md §4.6). A trip is rolled one season + one
+// weather; the day-phase moves with the daylight clock. Spot Pack species may
+// gate themselves to any of these (plus a preferred bait), giving packs huge
+// content leverage without engine changes. Pools are the engine defaults; a
+// pack can narrow them via hints.seasons / hints.weather.
+export const SEASONS = ["spring", "summer", "autumn", "winter"];
+export const WEATHERS = ["clear", "cloudy", "rain", "fog", "wind"];
+
+// Day-phase from the daylight clock: golden hours at the ends, plain day mid-trip.
+export function phaseOf(time) {
+  const f = time && time.maxTurns ? time.turn / time.maxTurns : 0;
+  if (f < 0.2) return "dawn";
+  if (f >= 0.8) return "dusk";
+  return "day";
+}
+
+function envOf(s) {
+  return { phase: phaseOf(s.time), season: s.season, weather: s.weather };
+}
+
+// A gate field is a list of allowed tokens; missing or containing "any" means
+// unrestricted. Kept tolerant so a sloppy pack degrades to "always allowed".
+function gateList(v) {
+  if (v == null) return null;
+  const arr = Array.isArray(v) ? v : [v];
+  const out = arr.map((x) => String(x).toLowerCase()).filter(Boolean);
+  if (!out.length || out.includes("any")) return null;
+  return out;
+}
+function gateOk(list, value) {
+  return !list || list.includes(String(value).toLowerCase());
+}
+export function isSpeciesAllowed(sp, env) {
+  return (
+    gateOk(gateList(sp.time), env.phase) &&
+    gateOk(gateList(sp.season), env.season) &&
+    gateOk(gateList(sp.weather), env.weather)
+  );
+}
+
+function sanitizePool(raw, fallback) {
+  if (!Array.isArray(raw)) return fallback;
+  const out = raw.map((x) => String(x).toLowerCase()).filter((x) => fallback.includes(x));
+  return out.length ? out : fallback;
+}
+function phaseBite(phase) {
+  return phase === "dawn" || phase === "dusk" ? 0.1 : 0; // golden hours
+}
+function weatherBite(w) {
+  return { rain: 0.05, cloudy: 0.03, fog: 0.02, clear: 0, wind: -0.03 }[w] ?? 0;
+}
 
 export function emptyLogbook() {
   return {
@@ -26,11 +78,19 @@ export function newGame({ seed = "nethook", pack = null, logbook = null } = {}) 
   const world = buildWorld(seedState, pack);
   const speciesById = Object.fromEntries(world.species.map((s) => [s.id, s]));
 
+  // Roll this trip's season + weather from the (continuing) rng stream, narrowed
+  // by any pack hints. Deterministic given the seed, like everything else.
+  const hints = (pack && pack.hints) || {};
+  const season = pick(seedState, sanitizePool(hints.seasons, SEASONS));
+  const weather = pick(seedState, sanitizePool(hints.weather, WEATHERS));
+
   return {
     seed,
     rngState: seedState.rngState, // continue the same stream
     world,
     speciesById,
+    season,
+    weather,
     player: { ...world.playerStart },
     time: { turn: 0, maxTurns: DEFAULT_DAYLIGHT },
     inventory: {
@@ -109,7 +169,7 @@ function doCast(s, dx, dy) {
   s.logbook.totals.casts++;
   const onTile = s.world.fish.find((f) => f.x === tx && f.y === ty) || null;
 
-  let biteChance = 0.5 + rod(s).biteBonus + bait(s).biteBonus;
+  let biteChance = 0.5 + rod(s).biteBonus + bait(s).biteBonus + phaseBite(phaseOf(s.time)) + weatherBite(s.weather);
   if (onTile) biteChance += 0.25; // you can see it rising
   biteChance = clamp(biteChance, 0.05, 0.95);
 
@@ -131,13 +191,16 @@ function doCast(s, dx, dy) {
 }
 
 function chooseSpecies(s, hab) {
-  const rareBoost = bait(s).rareBonus;
+  const env = envOf(s);
+  const b = bait(s);
+  const rareBoost = b.rareBonus;
   const candidates = s.world.species
-    .filter((sp) => sp.habitat === "any" || sp.habitat === hab)
+    .filter((sp) => (sp.habitat === "any" || sp.habitat === hab) && isSpeciesAllowed(sp, env))
     .map((sp) => {
       let w = RARITY[sp.rarity].weight;
       if (sp.rarity !== "common" && sp.rarity !== "uncommon") w *= 1 + rareBoost;
       if (sp.junk) w *= 0.5;
+      if (Array.isArray(sp.bait) && sp.bait.map(String).includes(b.id)) w *= 2; // preferred bait
       return { sp, w };
     });
   const total = candidates.reduce((a, c) => a + c.w, 0);

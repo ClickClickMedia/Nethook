@@ -22,11 +22,12 @@ a real fishing primer, so keep species, tackle, and strategy authentic.
   "species": [
     { "name": "Rainbow Trout", "glyph": "F", "rarity": "uncommon", "habitat": "deep",
       "weightRange": [0.8, 3.5], "strength": 4,
+      "time": ["dawn", "dusk"], "season": ["spring", "summer"], "weather": ["clear", "cloudy"], "bait": ["lure"],
       "behavior": "short in-world flavour", "realInfo": "a true fact about catching it" }
   ],
   "tackle": [ { "name": "Smelt Fly", "type": "bait", "effect": "+trout" } ],
   "strategy": [ "real, actionable tip", "another tip" ],
-  "hints": { "timeOfDay": "dawn", "season": "summer" }
+  "hints": { "seasons": ["spring", "summer", "autumn", "winter"], "weather": ["clear", "cloudy", "rain", "fog", "wind"] }
 }
 ```
 
@@ -35,6 +36,15 @@ Rules:
   rare/legendary; include 1 junk item (`"junk": true`) for comedy; 4-7 species total.
 - `habitat` ∈ shallow | deep | reeds | any. `weightRange` is `[min, max]` kg, min ≤ max.
 - `glyph` is a single character (f/F small/big fish, e eel-like, S/C big, ♦ rare, } junk).
+- **Optional environment gates** (this is where realism pays off — use them to make
+  each trip play differently): `time` ⊂ dawn|day|dusk|night, `season` ⊂
+  spring|summer|autumn|winter, `weather` ⊂ clear|cloudy|rain|fog|wind|storm|snow,
+  `bait` = list of bait ids the fish prefers (doubles its odds when that bait is on).
+  Each is a list; omit (or use `["any"]`) to leave a species ungated. Gate the
+  signature seasonal/low-light/weather-dependent fish — e.g. a winter spawning run,
+  a dawn-only riser, a rain-only oddity. Unknown tokens are dropped safely.
+- `hints.seasons` / `hints.weather` narrow the pools this spot rolls from each trip
+  (e.g. a tropical flat is never "snow"). Omit to allow all engine defaults.
 - `map` is optional — omit it to use a procedural lake. If you include one, make it
   ~10-16 rows, water in the middle, a `=` dock on a shore.
 
