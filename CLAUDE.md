@@ -48,7 +48,7 @@ The game is split so the logic is testable without a terminal:
 
 ## Commands
 ```bash
-npm test                              # node game/selftest.mjs (32 assertions)
+npm test                              # node game/selftest.mjs (39 assertions)
 node game/index.mjs ["Spot Name"]     # play locally (needs a real TTY)
 node game/launch.mjs --dry-run        # show the window-spawn plan for this env
 NETHOOK_FORCE_ENV=macos node game/launch.mjs --dry-run   # force an env
@@ -63,8 +63,9 @@ no-semicolon-free style already present (match the surrounding files).
 - **Add a built-in Spot Pack:** drop a JSON file in `game/packs/` matching the
   schema in `game/pack.mjs`; run `node game/packcheck.mjs` on it; the selftest
   asserts at least two valid built-in packs exist.
-- **Tune difficulty:** reel feel lives in `doReel()` in `core.mjs`; bite odds in
-  `doCast()`/`chooseSpecies()`; daylight length is `DEFAULT_DAYLIGHT`.
+- **Tune difficulty:** reel feel lives in `doReel()` + the per-mode reducers
+  (`steadyReel`/`surgeReel`/`pendulumReel`) and `chooseReelMode()` in `core.mjs`;
+  bite odds in `doCast()`/`chooseSpecies()`; daylight length is `DEFAULT_DAYLIGHT`.
 - **Change ranking of nothing** — there's no server; persistence is local JSON.
 
 ## Plugin pieces

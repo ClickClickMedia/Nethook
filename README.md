@@ -50,7 +50,10 @@ Claude kicks off a long command (once per session).
 - **Move** with `hjkl` or arrows; you walk the shore/dock (`@`).
 - **Fish**: press `f` then a direction to cast at adjacent water. On a bite, a reel
   fight begins — **`r`** to reel when there's slack, **`e`** to ease when it runs.
-  Let the tension hit 100% and the line **snaps**.
+  Let the tension hit 100% and the line **snaps**. Fights come in three flavours
+  (rarer fish pick the nastier ones): a **steady haul**, a **runner** that bolts in
+  bursts (ease while it runs, reel when slack), and a **pendulum** where you reel
+  only while the sweeping lure sits in the green zone.
 - **Water**: shallow `~`, deep `≈`, reeds `"`, lilypads `,`, rocks `#` (no fish).
   Different species favour different depths.
 - **Shanty** (`$`): spend coins on better **rods** and **bait** to unlock deeper
@@ -70,7 +73,7 @@ bad one can never crash the game; with no pack it builds a procedural lake.
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 32 assertions over the pure core
+npm test        # node game/selftest.mjs — 39 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

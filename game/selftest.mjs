@@ -161,4 +161,55 @@ function ok(cond, label) {
   ok(frame.includes("move: hjkl"), "render shows the controls hint");
 }
 
+// 11. Reel minigame variety (steady / surge / pendulum)
+{
+  // pendulum: reeling inside the zone advances the fight; outside it spikes tension
+  const base = newGame({ seed: "pendulum-test" });
+  const mkPend = (pos) => ({
+    ...base, mode: "reel",
+    reel: { speciesId: "perch", targetX: -1, targetY: -1, stamina: 3, maxStamina: 3,
+      tension: 0, maxTension: 100, mode: "pendulum", pos, vel: 8, zoneLo: 40, zoneHi: 60 },
+  });
+  const inZone = step(mkPend(50), { type: "reel" });
+  ok(inZone.reel.stamina === 2, "pendulum: reeling inside the zone advances the fight");
+  const outZone = step(mkPend(5), { type: "reel" });
+  ok(outZone.reel.stamina === 3 && outZone.reel.tension > 0, "pendulum: reeling outside the zone spikes tension, no progress");
+  const swept = step(mkPend(50), { type: "strain" });
+  ok(swept.reel.pos !== 50, "pendulum: the strain tick sweeps the lure");
+
+  // surge: reeling while running is far riskier than reeling slack
+  const r = newGame({ seed: "surge-test" });
+  r.mode = "reel";
+  const mkSurge = (running) => ({
+    ...r, mode: "reel",
+    reel: { speciesId: "pike", targetX: -1, targetY: -1, stamina: 5, maxStamina: 5,
+      tension: 0, maxTension: 100, mode: "surge", running },
+  });
+  const running = step(mkSurge(true), { type: "reel" });
+  const slack = step(mkSurge(false), { type: "reel" });
+  ok(running.reel.tension > slack.reel.tension, "surge: horsing a running fish builds far more tension than reeling slack");
+  ok(running.reel.stamina === 4 && slack.reel.stamina === 4, "surge: reeling always works the fish down");
+
+  // default (no mode field) behaves as the classic steady haul
+  let d = newGame({ seed: "steady-default" });
+  d.mode = "reel";
+  d.reel = { speciesId: "perch", targetX: -1, targetY: -1, stamina: 1, maxStamina: 1, tension: 0, maxTension: 100 };
+  d = step(d, { type: "reel" });
+  ok(d.mode === "explore" && d.caught.length === 1, "a reel with no mode field defaults to steady and lands the fish");
+
+  // makeReel is reachable through a real cast: mode is always one of the three
+  let c = newGame({ seed: "cast-mode" });
+  let castReel = null;
+  for (let i = 0; i < 40 && !castReel; i++) {
+    let t = newGame({ seed: `cast-mode-${i}` });
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (isWater(tileAt(t.world, t.player.x + dx, t.player.y + dy))) {
+        const after = step(t, { type: "cast", dx, dy });
+        if (after.mode === "reel") { castReel = after.reel; break; }
+      }
+    }
+  }
+  ok(castReel && ["steady", "surge", "pendulum"].includes(castReel.mode), "a hooked fish from a real cast gets a valid reel mode");
+}
+
 console.log(`OK — ${passed} assertions passed.`);

@@ -59,10 +59,20 @@ export function render(state, { color = true } = {}) {
   // Mode-specific panel
   if (state.mode === "reel" && state.reel) {
     const sp = state.speciesById[state.reel.speciesId];
-    lines.push(`  ON THE LINE: ${sp.name}`);
+    const mode = state.reel.mode || "steady";
+    lines.push(`  ON THE LINE: ${sp.name}  ${paint(`(${MODE_LABEL[mode]})`, "1;35", color)}`);
     lines.push(`  TENSION  ${bar(state.reel.tension, state.reel.maxTension, 24, color, 31)} ${Math.round(state.reel.tension)}%`);
     lines.push(`  FIGHT    ${bar(state.reel.stamina, state.reel.maxStamina, 24, color, 33)}`);
-    lines.push(`  [r] reel in   [e] ease off   — land it before the line snaps!`);
+    if (mode === "surge") {
+      lines.push(state.reel.running
+        ? paint("  ⚡ IT'S RUNNING — [e] ease off!", "1;91", color)
+        : paint("  ~ line's slack — [r] reel in", "1;92", color));
+    } else if (mode === "pendulum") {
+      lines.push(`  LURE     ${pendulumTrack(state.reel, 24, color)}`);
+      lines.push("  [r] reel only while ● is over the green zone");
+    } else {
+      lines.push("  [r] reel in   [e] ease off   — land it before the line snaps!");
+    }
   } else if (state.mode === "shop") {
     lines.push("  🛖 SHANTY");
     lines.push(`  [1] ${nextLabel(state, "rod")}`);
@@ -92,6 +102,22 @@ export function render(state, { color = true } = {}) {
   lines.push(paint("  move: hjkl/arrows · f+dir: cast · $: shanty · q: quit", "90", color));
 
   return lines.join("\n");
+}
+
+const MODE_LABEL = { steady: "steady haul", surge: "it's a runner!", pendulum: "find the zone" };
+
+// A pendulum track: the sweeping lure (●) over a green sweet-spot zone (▓).
+function pendulumTrack(reel, width, color) {
+  const marker = Math.round((reel.pos / 100) * (width - 1));
+  let s = "";
+  for (let i = 0; i < width; i++) {
+    if (i === marker) { s += color ? "\x1b[1;93m●\x1b[0m" : "|"; continue; }
+    const p = (i / (width - 1)) * 100;
+    const inZone = p >= reel.zoneLo && p <= reel.zoneHi;
+    const ch = inZone ? "▓" : "░";
+    s += inZone && color ? `\x1b[32m${ch}\x1b[0m` : ch;
+  }
+  return s;
 }
 
 function nextLabel(state, kind) {

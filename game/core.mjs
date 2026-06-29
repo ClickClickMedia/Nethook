@@ -2,7 +2,7 @@
 // disk, no timers — every transition is deterministic given state.rngState, so
 // the whole game is verifiable headlessly (see selftest.mjs).
 
-import { seedFrom, rand } from "./rng.mjs";
+import { seedFrom, rand, randint } from "./rng.mjs";
 import { buildWorld, tileAt, tileHabitat, isWater, isWalkable, TILE } from "./world.mjs";
 import { RARITY, RODS, BAITS } from "./fish.mjs";
 
@@ -123,17 +123,9 @@ function doCast(s, dx, dy) {
     msg(s, "Something brushed the line, then nothing.");
     return advanceTurn(s);
   }
-  s.reel = {
-    speciesId: species.id,
-    targetX: tx,
-    targetY: ty,
-    stamina: species.strength,
-    maxStamina: species.strength,
-    tension: 0,
-    maxTension: 100,
-  };
+  s.reel = makeReel(s, species, tx, ty);
   s.mode = "reel";
-  msg(s, `Something's on! (${species.name}) — [r]eel when slack, [e]ase when it runs.`);
+  msg(s, `Something's on! (${species.name}) — ${REEL_HINTS[s.reel.mode]}`);
   return advanceTurn(s);
 }
 
@@ -157,9 +149,60 @@ function chooseSpecies(s, hab) {
   return candidates[candidates.length - 1].sp;
 }
 
+// ── reel minigame variety ─────────────────────────────────────────────────
+// Three deterministic minigames share one control scheme (reel / ease, plus the
+// live timer's `strain` tick) so the live wiring never changes:
+//   steady   — classic rising-tension haul; ease to bleed it (the original)
+//   surge    — the fish runs in bursts; reeling mid-run spikes tension, so you
+//              must ease while it RUNS and reel only when the line goes slack
+//   pendulum — a lure sweeps a track; reel only while it sits in the green zone
+// Mode is picked once per hookup from the rng stream, weighted by rarity, so it
+// stays reproducible and headlessly testable. A reel built without a `mode`
+// field falls back to steady (keeps older saves / hand-built test states valid).
+export const REEL_HINTS = {
+  steady: "[r]eel steadily, [e]ase to bleed tension",
+  surge: "[e]ase when it RUNS, [r]eel when it goes slack",
+  pendulum: "[r]eel only when the lure is in the zone",
+};
+
+function chooseReelMode(s, sp) {
+  if (sp.junk) return "steady";
+  const tier = RARITY[sp.rarity].mult;
+  const r = rand(s);
+  if (tier <= 1) return r < 0.78 ? "steady" : "surge";
+  if (tier <= 2) return r < 0.45 ? "steady" : r < 0.8 ? "surge" : "pendulum";
+  return r < 0.25 ? "steady" : r < 0.58 ? "surge" : "pendulum"; // rare+ fight dirtier
+}
+
+function makeReel(s, sp, tx, ty) {
+  const mode = chooseReelMode(s, sp);
+  const reel = {
+    speciesId: sp.id, targetX: tx, targetY: ty,
+    stamina: sp.strength, maxStamina: sp.strength,
+    tension: 0, maxTension: 100, mode,
+    running: false, pos: 0, vel: 0, zoneLo: 0, zoneHi: 0,
+  };
+  if (mode === "pendulum") {
+    reel.pos = randint(s, 0, 100);
+    reel.vel = randint(s, 6, 11) * (rand(s) < 0.5 ? 1 : -1);
+    const span = clamp(32 - sp.strength * 2, 14, 30); // harder fish = narrower zone
+    reel.zoneLo = randint(s, 0, 100 - span);
+    reel.zoneHi = reel.zoneLo + span;
+  }
+  return reel;
+}
+
 function doReel(s, kind) {
   if (s.mode !== "reel" || !s.reel) return s;
   const sp = s.speciesById[s.reel.speciesId];
+  const m = s.reel.mode || "steady";
+  if (m === "surge") surgeReel(s, sp, kind);
+  else if (m === "pendulum") pendulumReel(s, sp, kind);
+  else steadyReel(s, sp, kind);
+  return resolveReel(s, sp);
+}
+
+function steadyReel(s, sp, kind) {
   if (kind === "reel") {
     s.reel.stamina = Math.max(0, s.reel.stamina - 1);
     s.reel.tension += 14 + sp.strength * 2 - rod(s).tensionEase;
@@ -169,16 +212,55 @@ function doReel(s, kind) {
     // emitted by the live timer to create urgency; not used in headless tests
     s.reel.tension += Math.ceil(sp.strength * 1.2);
   }
+}
 
+function surgeReel(s, sp, kind) {
+  if (kind === "strain") {
+    if (s.reel.running) {
+      s.reel.tension += Math.ceil(sp.strength * 1.5);
+      if (rand(s) < 0.4) s.reel.running = false; // the run peters out
+    } else if (rand(s) < 0.22 + sp.strength * 0.03) {
+      s.reel.running = true; // it bolts
+    }
+  } else if (kind === "reel") {
+    s.reel.stamina = Math.max(0, s.reel.stamina - 1); // reeling always works it down
+    s.reel.tension += s.reel.running
+      ? 20 + sp.strength * 3 - rod(s).tensionEase // horsing a running fish: dangerous
+      : Math.max(0, 8 + sp.strength - rod(s).tensionEase); // slack: cheap line
+  } else if (kind === "ease") {
+    s.reel.tension = Math.max(0, s.reel.tension - (16 + rod(s).tensionEase));
+    if (s.reel.running && rand(s) < 0.5) s.reel.running = false; // giving line calms it
+  }
+}
+
+function pendulumReel(s, sp, kind) {
+  if (kind === "strain") {
+    let pos = s.reel.pos + s.reel.vel;
+    if (pos >= 100) { pos = 100; s.reel.vel = -Math.abs(s.reel.vel); }
+    if (pos <= 0) { pos = 0; s.reel.vel = Math.abs(s.reel.vel); }
+    s.reel.pos = pos;
+    s.reel.tension += Math.ceil(sp.strength * 0.6); // it pulls steadily
+  } else if (kind === "reel") {
+    const inZone = s.reel.pos >= s.reel.zoneLo && s.reel.pos <= s.reel.zoneHi;
+    if (inZone) {
+      s.reel.stamina = Math.max(0, s.reel.stamina - 1);
+      s.reel.tension += Math.max(0, 6 + sp.strength - rod(s).tensionEase);
+    } else {
+      s.reel.tension += 16 + sp.strength * 2 - rod(s).tensionEase; // mistimed: spike
+    }
+  } else if (kind === "ease") {
+    s.reel.tension = Math.max(0, s.reel.tension - (16 + rod(s).tensionEase));
+  }
+}
+
+function resolveReel(s, sp) {
   if (s.reel.tension >= s.reel.maxTension) {
     msg(s, `The line SNAPS! The ${sp.name} got away.`);
     s.mode = "explore";
     s.reel = null;
     return s;
   }
-  if (s.reel.stamina <= 0) {
-    return landFish(s, sp);
-  }
+  if (s.reel.stamina <= 0) return landFish(s, sp);
   return s;
 }
 
