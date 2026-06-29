@@ -305,13 +305,16 @@ time — the natural next step for the `/nethook:spot` generator.
   Packs. (True force-spawn bait still open.)
 - ~~**Dex-completion rewards**~~ — **DONE**: complete a spot's logbook → the
   earned-not-bought **Golden Rod**.
-- **Catch freshness/decay** and a small spatial inventory (DREDGE) if we ever add
-  selling/economy depth.
+- ~~**Catch freshness/decay**~~ and ~~a light **idle-accrual layer**~~ — **DONE**,
+  fused into one mechanic: a deployed **crab pot** accrues coins for real elapsed
+  time and the haul decays Fresh→Stale→Rotting past a cap (`collectPot()`), which
+  rewards return visits and caps idle farming. A spatial inventory (DREDGE) is
+  still open, and would pair with a fuller selling/economy layer.
 - Optional **rot.js** for FOV/pathfinding if the world gains AI actors.
-- **Catch grades** (terminal-fish's F–SSS by % of a species' max size) layered on
-  top of our weight/points, for extra "personal best" texture.
-- A light **idle-accrual layer** between launches (IdleBattle/idle-terminal style) —
-  e.g. a set crab pot that yields a little while you're away.
+- ~~**Catch grades** (terminal-fish's F–SSS)~~ — **DONE** (`gradeFor()`), layered
+  on top of weight/points for "personal best" texture.
+- ~~A light **idle-accrual layer** between launches~~ — **DONE**: the crab pot
+  above (see the freshness/decay entry).
 - **Grounded Spot Packs:** ~~drive bites with a solunar/water-temperature model~~
   — **DONE** (`game/solunar.mjs` + `tempOptimum`/`tempRange`). Still open: seeding a
   pack's *species list* from GBIF/OBIS + FishBase occurrence/tolerance data (§5.1).

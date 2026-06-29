@@ -368,4 +368,35 @@ function ok(cond, label) {
   ok(v.ok && v.pack.species[0].tempOptimum === 8 && v.pack.species[0].tempRange === 4, "pack temperature preference is kept");
 }
 
+// 18. Idle crab-pot accrual + freshness decay
+{
+  const HOUR = 3600;
+  // no pot deployed → no yield no matter the elapsed time
+  let s = newGame({ seed: "pot-none" });
+  s = step(s, { type: "collectPot", seconds: 5 * HOUR });
+  ok(!s.pot && s.inventory.coins === 0, "no crab pot → nothing accrues");
+
+  // buy a pot at the shanty
+  let b = newGame({ seed: "pot-buy" });
+  b.inventory.coins = 200;
+  b.player = { ...b.world.shop };
+  b = step(b, { type: "openShop" });
+  b = step(b, { type: "buyPot" });
+  ok(b.logbook.gear.crabPot === true, "the crab pot can be bought at the shanty");
+  ok(b.inventory.coins === 120, "the crab pot costs 80 coins");
+
+  // a fresh collection (within the fill window) yields coins, marked Fresh
+  const fresh = step(b, { type: "collectPot", seconds: 5 * HOUR });
+  ok(fresh.pot && fresh.pot.coins > 0 && fresh.pot.freshness === "Fresh", "a pot collected within the fill window is Fresh and pays out");
+
+  // determinism: same seed + same elapsed → same yield
+  const fresh2 = step(b, { type: "collectPot", seconds: 5 * HOUR });
+  ok(fresh2.pot.coins === fresh.pot.coins, "idle accrual is deterministic for a given seed and elapsed time");
+
+  // leaving it far too long rots the catch — strictly less than a timely Fresh haul
+  const rotting = step(b, { type: "collectPot", seconds: 40 * HOUR });
+  ok(rotting.pot.freshness === "Rotting", "a long-neglected pot goes Rotting");
+  ok(rotting.pot.coins < fresh.pot.coins, "a rotting haul is worth less than a fresh one (caps idle farming)");
+}
+
 console.log(`OK — ${passed} assertions passed.`);

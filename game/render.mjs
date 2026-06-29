@@ -94,6 +94,7 @@ export function render(state, { color = true } = {}) {
     lines.push("  🛖 SHANTY");
     lines.push(`  [1] ${nextLabel(state, "rod")}`);
     lines.push(`  [2] ${nextLabel(state, "bait")}`);
+    lines.push(`  [3] ${state.logbook.gear.crabPot ? "Crab pot deployed (fills while away)" : "Buy crab pot (80c) — yields while away"}`);
     lines.push("  [q] leave");
   } else if (state.mode === "gameover") {
     lines.push(paint(`  ☀️  DUSK — trip over. Score ${state.score}  (best ${state.logbook.bestScore})`, "1;33", color));

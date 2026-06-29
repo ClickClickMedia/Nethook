@@ -57,7 +57,10 @@ Claude kicks off a long command (once per session).
 - **Water**: shallow `~`, deep `≈`, reeds `"`, lilypads `,`, rocks `#` (no fish).
   Different species favour different depths.
 - **Shanty** (`$`): spend coins on better **rods** and **bait** to unlock deeper
-  water and rarer fish. Gear and coins persist between trips.
+  water and rarer fish, or deploy a **🦀 crab pot**. Gear and coins persist.
+- **Crab pot** (idle): once deployed, it accrues a little catch in real time while
+  you're away and pays out the next time you launch — but the haul decays
+  **Fresh → Stale → Rotting** if you leave it too long, so check in regularly.
 - **Complete the logbook**: catch every (non-junk) species at a spot and you earn
   the **Golden Rod** — the best rod in the game, granted once and kept for good.
 - **Trips**: each launch is one bounded daylight session; at dusk it scores.
@@ -95,7 +98,7 @@ trip's `°C` and a 🌑🌓🌕 feeding indicator.
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 85 assertions over the pure core
+npm test        # node game/selftest.mjs — 92 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

@@ -30,10 +30,15 @@ let statusTimer = null;
 let lastClaude = null;
 
 function startTrip() {
-  const seed = `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
+  const now = Date.now();
+  const seed = `${now}-${Math.floor(Math.random() * 1e9)}`;
   // Read the live clock HERE (the I/O boundary) and hand it to the pure core so
-  // the moon phase / solunar feeding model is grounded in the real date.
-  return newGame({ seed, pack, logbook, env: { dateMs: Date.now() } });
+  // the moon phase / solunar model is grounded in the real date, and the idle
+  // crab pot accrues for the real time since the last session.
+  const elapsed = logbook.lastPlayed ? Math.max(0, (now - logbook.lastPlayed) / 1000) : 0;
+  logbook.lastPlayed = now; // stamp now so repeat trips this session don't re-collect
+  const st = newGame({ seed, pack, logbook, env: { dateMs: now } });
+  return step(st, { type: "collectPot", seconds: elapsed });
 }
 
 // ── terminal setup / teardown ─────────────────────────────────────────────
@@ -51,6 +56,7 @@ function leave() {
 }
 function quit(code = 0) {
   try {
+    state.logbook.lastPlayed = Date.now(); // so the crab pot accrues from now next time
     saveLogbook(state.logbook, dataDir);
   } catch {
     /* best-effort */
@@ -130,6 +136,7 @@ function onKey(key) {
   if (state.mode === "shop") {
     if (key === "1") apply({ type: "buyRod" });
     else if (key === "2") apply({ type: "buyBait" });
+    else if (key === "3") apply({ type: "buyPot" });
     else if (key === "q" || key === "\x1b") apply({ type: "closeShop" });
     return;
   }

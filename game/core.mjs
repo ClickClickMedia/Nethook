@@ -81,8 +81,9 @@ export function emptyLogbook() {
     dex: {},
     totals: { caught: 0, weight: 0, trips: 0, casts: 0, trophies: 0, aberrations: 0 },
     bestScore: 0,
-    gear: { rodLevel: 0, baitLevel: 0, coins: 0 },
+    gear: { rodLevel: 0, baitLevel: 0, coins: 0, crabPot: false },
     rewards: { goldenRod: false },
+    lastPlayed: 0, // epoch ms, stamped by index.mjs — drives idle crab-pot accrual
   };
 }
 
@@ -160,6 +161,8 @@ export function step(state, action) {
     case "openShop": return openShop(s);
     case "buyRod": return buy(s, "rod");
     case "buyBait": return buy(s, "bait");
+    case "buyPot": return buyPot(s);
+    case "collectPot": return collectPot(s, action.seconds);
     case "closeShop": s.mode = "explore"; return s;
     case "wait": return advanceTurn(s);
     case "claudeStatus": s.claudeStatus = action.status; return s;
@@ -485,7 +488,44 @@ function syncGear(s) {
     rodLevel: s.inventory.rodLevel,
     baitLevel: s.inventory.baitLevel,
     coins: s.inventory.coins,
+    crabPot: !!(s.logbook.gear && s.logbook.gear.crabPot),
   };
+}
+
+const CRAB_POT_PRICE = 80;
+
+function buyPot(s) {
+  if (s.mode !== "shop") return s;
+  if (s.logbook.gear && s.logbook.gear.crabPot) return (msg(s, "Your crab pot's already out there."), s);
+  if (s.inventory.coins < CRAB_POT_PRICE) return (msg(s, `Need ${CRAB_POT_PRICE} coins for a crab pot.`), s);
+  s.inventory.coins -= CRAB_POT_PRICE;
+  s.logbook.gear = { ...s.logbook.gear, crabPot: true };
+  syncGear(s);
+  msg(s, "Crab pot deployed — it'll fill with a little catch while you're away.");
+  return s;
+}
+
+// Idle accrual + freshness decay (RESEARCH.md §7). A deployed crab pot yields
+// coins for the real time elapsed since you last played (passed IN as seconds —
+// the clock is read in index.mjs, never here). The yield fills toward a cap;
+// past it the catch goes Stale then Rotting, so leaving it for a week is worse
+// than collecting regularly — which both rewards return visits and caps farming.
+const POT_FILL_SECONDS = 6 * 3600; // a pot brims after ~6 hours away
+export function collectPot(s, seconds) {
+  s.pot = null;
+  if (!s.logbook.gear || !s.logbook.gear.crabPot) return s;
+  if (!isNum(seconds) || seconds <= 0) return s;
+  const fill = Math.min(1, seconds / POT_FILL_SECONDS);
+  let coins = Math.round(fill * 40 * (0.85 + rand(s) * 0.3));
+  let freshness = "Fresh";
+  if (seconds > POT_FILL_SECONDS * 3) { freshness = "Rotting"; coins = Math.round(coins * 0.4); }
+  else if (seconds > POT_FILL_SECONDS) { freshness = "Stale"; coins = Math.round(coins * 0.75); }
+  if (coins <= 0) return s;
+  s.inventory.coins += coins;
+  syncGear(s);
+  s.pot = { coins, freshness };
+  msg(s, `🦀 The crab pot yielded ${coins}c — ${freshness}.`);
+  return s;
 }
 
 function driftFish(s) {
