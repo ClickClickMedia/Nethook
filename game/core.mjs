@@ -5,6 +5,9 @@
 import { seedFrom, rand, randint, pick } from "./rng.mjs";
 import { buildWorld, tileAt, tileHabitat, isWater, isWalkable, TILE } from "./world.mjs";
 import { RARITY, RODS, BAITS } from "./fish.mjs";
+import { solunarScore, seasonBaseTemp } from "./solunar.mjs";
+
+const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 
 const MAX_MESSAGES = 6;
 const DEFAULT_DAYLIGHT = 90;
@@ -60,6 +63,17 @@ function phaseBite(phase) {
 function weatherBite(w) {
   return { rain: 0.05, cloudy: 0.03, fog: 0.02, clear: 0, wind: -0.03 }[w] ?? 0;
 }
+// Solunar feeding nudges the bite a touch either way; null score = no effect.
+function solunarBite(score) {
+  return isNum(score) ? (score - 0.5) * 0.18 : 0;
+}
+// How suitable a spot's water temperature is for a species, 0.15..1. A species
+// without a stated optimum is unaffected (returns 1).
+export function tempSuit(sp, temp) {
+  if (!isNum(sp.tempOptimum) || !isNum(temp)) return 1;
+  const span = isNum(sp.tempRange) && sp.tempRange > 0 ? sp.tempRange : 6;
+  return Math.max(0.15, Math.min(1, 1 - Math.abs(temp - sp.tempOptimum) / span));
+}
 
 export function emptyLogbook() {
   return {
@@ -72,7 +86,7 @@ export function emptyLogbook() {
   };
 }
 
-export function newGame({ seed = "nethook", pack = null, logbook = null } = {}) {
+export function newGame({ seed = "nethook", pack = null, logbook = null, env = null } = {}) {
   const lb = logbook || emptyLogbook();
   const seedState = { rngState: seedFrom(seed) };
   const world = buildWorld(seedState, pack);
@@ -84,6 +98,16 @@ export function newGame({ seed = "nethook", pack = null, logbook = null } = {}) 
   const season = pick(seedState, sanitizePool(hints.seasons, SEASONS));
   const weather = pick(seedState, sanitizePool(hints.weather, WEATHERS));
 
+  // Grounded environment (RESEARCH.md §5.1). `env` is supplied by the caller
+  // (index.mjs reads the real clock and passes env.dateMs) so reducers stay
+  // pure. Water temp comes from the season around the spot's annual mean;
+  // solunar feeding strength comes from the moon phase on the trip's date.
+  const baseTemp = isNum(hints.baseTemp) ? hints.baseTemp : 14;
+  const waterTemp = env && isNum(env.waterTemp) ? env.waterTemp : seasonBaseTemp(season, baseTemp);
+  const solunar = env && isNum(env.dateMs) ? solunarScore(env.dateMs)
+    : env && isNum(env.solunar) ? env.solunar
+      : null; // null = unknown → neutral, no effect on the bite
+
   return {
     seed,
     rngState: seedState.rngState, // continue the same stream
@@ -91,6 +115,8 @@ export function newGame({ seed = "nethook", pack = null, logbook = null } = {}) 
     speciesById,
     season,
     weather,
+    waterTemp: Math.round(waterTemp * 10) / 10,
+    solunar,
     player: { ...world.playerStart },
     time: { turn: 0, maxTurns: DEFAULT_DAYLIGHT },
     inventory: {
@@ -169,7 +195,8 @@ function doCast(s, dx, dy) {
   s.logbook.totals.casts++;
   const onTile = s.world.fish.find((f) => f.x === tx && f.y === ty) || null;
 
-  let biteChance = 0.5 + rod(s).biteBonus + bait(s).biteBonus + phaseBite(phaseOf(s.time)) + weatherBite(s.weather);
+  let biteChance =
+    0.5 + rod(s).biteBonus + bait(s).biteBonus + phaseBite(phaseOf(s.time)) + weatherBite(s.weather) + solunarBite(s.solunar);
   if (onTile) biteChance += 0.25; // you can see it rising
   biteChance = clamp(biteChance, 0.05, 0.95);
 
@@ -203,6 +230,7 @@ function chooseSpecies(s, hab) {
       if (sp.rarity !== "common" && sp.rarity !== "uncommon") w *= 1 + rareBoost;
       if (sp.junk) w *= 0.5;
       if (Array.isArray(sp.bait) && sp.bait.map(String).includes(b.id)) w *= 2; // preferred bait
+      w *= tempSuit(sp, s.waterTemp); // cold/warm-water species favour their range
       return { sp, w };
     });
   const total = candidates.reduce((a, c) => a + c.w, 0);

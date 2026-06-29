@@ -264,10 +264,14 @@ crankbait→walleye/bass at mid-depth; jig→bottom feeders; topwater→dawn/dus
 predators). **Licensing:** prefer CC0/CC-BY GBIF/OBIS records and public-domain NOAA
 data; FishBase/iNaturalist/Fishbrain need clearance for commercial use.
 
-**→ Nethook:** today Spot Packs are authored by Claude from knowledge, which is
-plenty for a novelty game. If we ever want *grounded* realism, GBIF/OBIS + FishBase
-could seed a pack's species list and a solunar/temperature model could drive the
-bite formula — a clean, well-scoped enhancement to the `/nethook:spot` generator.
+**→ Nethook:** Spot Packs are authored by Claude from knowledge, which is plenty
+for a novelty game. The **solunar + water-temperature** half of "grounded realism"
+now ships: `game/solunar.mjs` computes moon phase / feeding strength purely from an
+epoch timestamp (the live clock is read once in `index.mjs` and handed to the pure
+core), and species carry `tempOptimum`/`tempRange` that the bite formula weights
+against a season-derived water temperature. **Still deferred:** seeding a pack's
+*species list* from GBIF/OBIS + FishBase occurrence/tolerance data at authoring
+time — the natural next step for the `/nethook:spot` generator.
 
 ---
 
@@ -308,8 +312,9 @@ bite formula — a clean, well-scoped enhancement to the `/nethook:spot` generat
   top of our weight/points, for extra "personal best" texture.
 - A light **idle-accrual layer** between launches (IdleBattle/idle-terminal style) —
   e.g. a set crab pot that yields a little while you're away.
-- **Grounded Spot Packs:** seed species from GBIF/OBIS + FishBase and drive bites
-  with a solunar/water-temperature model (see §5.1).
+- **Grounded Spot Packs:** ~~drive bites with a solunar/water-temperature model~~
+  — **DONE** (`game/solunar.mjs` + `tempOptimum`/`tempRange`). Still open: seeding a
+  pack's *species list* from GBIF/OBIS + FishBase occurrence/tolerance data (§5.1).
 
 ---
 

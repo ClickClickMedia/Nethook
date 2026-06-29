@@ -35,9 +35,18 @@ export function render(state, { color = true } = {}) {
 
   // Title (with this trip's rolled environment)
   const phase = phaseOf(state.time);
-  const env = state.season
-    ? paint(`   ${WEATHER_ICON[state.weather] ?? ""}${state.weather ?? ""} · ${state.season} · ${PHASE_ICON[phase] ?? ""}${phase}`, "90", color)
-    : "";
+  let env = "";
+  if (state.season) {
+    const temp = typeof state.waterTemp === "number" ? ` · ${state.waterTemp}°C` : "";
+    const feed = typeof state.solunar === "number"
+      ? ` · ${state.solunar >= 0.66 ? "🌕" : state.solunar >= 0.33 ? "🌓" : "🌑"}feeding`
+      : "";
+    env = paint(
+      `   ${WEATHER_ICON[state.weather] ?? ""}${state.weather ?? ""} · ${state.season} · ${PHASE_ICON[phase] ?? ""}${phase}${temp}${feed}`,
+      "90",
+      color,
+    );
+  }
   lines.push(paint(`  🎣 NETHOOK — ${state.world.spotName}`, "1;36", color) + env);
   lines.push("");
 

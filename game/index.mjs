@@ -31,7 +31,9 @@ let lastClaude = null;
 
 function startTrip() {
   const seed = `${Date.now()}-${Math.floor(Math.random() * 1e9)}`;
-  return newGame({ seed, pack, logbook });
+  // Read the live clock HERE (the I/O boundary) and hand it to the pure core so
+  // the moon phase / solunar feeding model is grounded in the real date.
+  return newGame({ seed, pack, logbook, env: { dateMs: Date.now() } });
 }
 
 // ── terminal setup / teardown ─────────────────────────────────────────────

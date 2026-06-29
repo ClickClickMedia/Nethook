@@ -90,6 +90,10 @@ export function validatePack(raw) {
             : typeof sp.bait === "string"
               ? [sp.bait.toLowerCase().trim()]
               : undefined,
+          // Optional water-temperature preference (°C) — drives the bite via a
+          // suitability curve in core.tempSuit(). Sanitized to sane bounds.
+          tempOptimum: isNum(sp.tempOptimum) ? clamp(sp.tempOptimum, -2, 40) : undefined,
+          tempRange: isNum(sp.tempRange) ? clamp(sp.tempRange, 1, 30) : undefined,
         });
       }
     });

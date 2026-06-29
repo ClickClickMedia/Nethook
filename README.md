@@ -83,11 +83,19 @@ differently trip to trip — the skrei cod run shows up in winter, the kraken on
 at foggy dusk. Dawn/dusk and rain bite better. Gates are sanitized on load, never
 trusted.
 
+**Grounded bite model** (optional realism): a species can declare a water-temp
+preference (`tempOptimum` / `tempRange` °C); the engine derives the trip's water
+temperature from the season around the spot's annual mean (`hints.baseTemp`), so
+cold-water fish fade in a summer heatwave. The bite also follows **solunar**
+feeding — computed in-engine from the moon phase on the trip's real date (no API,
+no network) — strongest around the new and full moon. The header shows the
+trip's `°C` and a 🌑🌓🌕 feeding indicator.
+
 ## Development
 Zero runtime dependencies (pure Node + ANSI). The game core is split so it's
 testable without a TTY:
 ```
-npm test        # node game/selftest.mjs — 73 assertions over the pure core
+npm test        # node game/selftest.mjs — 85 assertions over the pure core
 node game/launch.mjs --dry-run      # show the window-spawn plan for your env
 node game/packcheck.mjs <pack.json> # validate a Spot Pack
 ```

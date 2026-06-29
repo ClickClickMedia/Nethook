@@ -6,7 +6,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { newGame, step, endTrip, emptyLogbook, recordCatch, gradeFor, phaseOf, isSpeciesAllowed, SEASONS, WEATHERS } from "./core.mjs";
+import { newGame, step, endTrip, emptyLogbook, recordCatch, gradeFor, phaseOf, isSpeciesAllowed, SEASONS, WEATHERS, tempSuit } from "./core.mjs";
+import { moonIllumination, solunarScore, seasonBaseTemp, REF_NEW_MOON_MS } from "./solunar.mjs";
 import { buildWorld, isWalkable, isWater, tileAt, TILE } from "./world.mjs";
 import { saveLogbook, loadLogbook } from "./logbook.mjs";
 import { validatePack, listPacks } from "./pack.mjs";
@@ -336,6 +337,35 @@ function ok(cond, label) {
   ok(aber.caught[0].points > normal.caught[0].points, "an aberration is worth more than the plain catch");
   ok(aber.logbook.totals.aberrations === 1 && normal.logbook.totals.aberrations === 0, "aberrations are counted in totals");
   ok(aber.logbook.dex.perch.aberrations === 1, "aberrations are counted per species in the dex");
+}
+
+// 17. Grounded environment: solunar + water-temperature
+{
+  // moon model around the reference new moon
+  ok(moonIllumination(REF_NEW_MOON_MS) < 0.05, "the reference epoch is ~a new moon (dark disc)");
+  ok(solunarScore(REF_NEW_MOON_MS) > 0.9, "new moon = strong solunar feeding");
+  const SYN_MS = 29.530588853 * 86400000;
+  ok(solunarScore(REF_NEW_MOON_MS + Math.round(SYN_MS / 2)) > 0.9, "full moon = strong feeding too");
+  ok(solunarScore(REF_NEW_MOON_MS + Math.round(SYN_MS / 4)) < 0.2, "first quarter = weak feeding");
+
+  // seasonal water temperature ordering
+  ok(seasonBaseTemp("summer") > seasonBaseTemp("winter"), "summer water is warmer than winter");
+
+  // temperature suitability curve
+  ok(tempSuit({ tempOptimum: 10, tempRange: 5 }, 10) === 1, "a species at its optimum temp has full suitability");
+  ok(tempSuit({ tempOptimum: 10, tempRange: 5 }, 25) < 0.3, "far from optimum the suitability collapses");
+  ok(tempSuit({}, 12) === 1, "a species with no stated optimum is temperature-agnostic");
+
+  // env flows into the trip, purely (date passed in — no clock read in core)
+  const g = newGame({ seed: "solunar", env: { dateMs: REF_NEW_MOON_MS } });
+  ok(typeof g.waterTemp === "number", "a trip carries a water temperature");
+  ok(g.solunar > 0.9, "a trip's solunar score derives from the supplied date");
+  const g2 = newGame({ seed: "no-env" });
+  ok(g2.solunar === null && typeof g2.waterTemp === "number", "with no env, solunar is neutral (null) and temp falls back to the season");
+
+  // pack temperature preference survives validation
+  const v = validatePack({ name: "Coldwater", species: [{ name: "Char", rarity: "rare", weightRange: [1, 5], tempOptimum: 8, tempRange: 4 }] });
+  ok(v.ok && v.pack.species[0].tempOptimum === 8 && v.pack.species[0].tempRange === 4, "pack temperature preference is kept");
 }
 
 console.log(`OK — ${passed} assertions passed.`);

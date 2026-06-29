@@ -43,8 +43,17 @@ Rules:
   Each is a list; omit (or use `["any"]`) to leave a species ungated. Gate the
   signature seasonal/low-light/weather-dependent fish — e.g. a winter spawning run,
   a dawn-only riser, a rain-only oddity. Unknown tokens are dropped safely.
+- **Water temperature** (optional, grounds the bite): give cold/warm-water species
+  a `tempOptimum` (°C) and `tempRange` (± tolerance). The engine derives each trip's
+  water temp from the season around `hints.baseTemp` (the spot's annual mean °C), so
+  a species fades when the water is wrong for it. E.g. trout `tempOptimum: 11`, a
+  tropical species `tempOptimum: 28`.
 - `hints.seasons` / `hints.weather` narrow the pools this spot rolls from each trip
-  (e.g. a tropical flat is never "snow"). Omit to allow all engine defaults.
+  (e.g. a tropical flat is never "snow"). `hints.baseTemp` sets the annual-mean water
+  temperature. Omit to allow all engine defaults (~14 °C temperate).
+- The bite also follows a **solunar** model computed from the moon phase on the real
+  date (engine-side, no input needed) — you don't author this, just know dawn/dusk,
+  good weather, the right temperature, and new/full moons all stack up to more bites.
 - `map` is optional — omit it to use a procedural lake. If you include one, make it
   ~10-16 rows, water in the middle, a `=` dock on a shore.
 
