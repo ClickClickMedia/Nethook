@@ -1,0 +1,12 @@
+{
+  "name": "nethook",
+  "description": "Marketplace for Nethook — a NetHack-style ASCII fishing roguelike you play in a second terminal window while Claude Code works.",
+  "owner": { "name": "ClickClickMedia" },
+  "plugins": [
+    {
+      "name": "nethook",
+      "source": ".",
+      "description": "A NetHack-style ASCII fishing roguelike to play in a second terminal window while Claude Code is busy. /gofish opens it; a hook pings you when Claude is done. Generate playable real-world fishing spots with /nethook:spot."
+    }
+  ]
+}

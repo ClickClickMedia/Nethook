@@ -1,0 +1,164 @@
+// Headless verification of the pure core. Drives reducers with a fixed seed and
+// scripted actions and asserts outcomes. Run: `node game/selftest.mjs`.
+// Exits non-zero on the first failed assertion.
+
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { newGame, step, endTrip, emptyLogbook } from "./core.mjs";
+import { buildWorld, isWalkable, isWater, tileAt, TILE } from "./world.mjs";
+import { saveLogbook, loadLogbook } from "./logbook.mjs";
+import { validatePack, listPacks } from "./pack.mjs";
+import { render } from "./render.mjs";
+import { seedFrom } from "./rng.mjs";
+
+let passed = 0;
+function ok(cond, label) {
+  if (!cond) {
+    console.error("FAIL:", label);
+    process.exit(1);
+  }
+  passed++;
+}
+
+// 1. Movement
+{
+  let s = newGame({ seed: "move-test" });
+  const start = { ...s.player };
+  // find a walkable neighbour
+  let moved = false;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (isWalkable(tileAt(s.world, start.x + dx, start.y + dy))) {
+      s = step(s, { type: "move", dx, dy });
+      moved = s.player.x === start.x + dx && s.player.y === start.y + dy;
+      break;
+    }
+  }
+  ok(moved, "player moves onto a walkable tile");
+  ok(s.time.turn >= 1, "moving advances the turn");
+}
+
+// 2. Casting toward water is processed; toward land is rejected
+{
+  let s = newGame({ seed: "cast-test" });
+  // toward land/invalid
+  const beforeCasts = s.logbook.totals.casts;
+  s = step(s, { type: "cast", dx: 0, dy: 0 }); // self tile, not water
+  ok(s.logbook.totals.casts === beforeCasts, "casting at a non-water tile does not count");
+
+  // find a water direction and cast
+  let waterDir = null;
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (isWater(tileAt(s.world, s.player.x + dx, s.player.y + dy))) waterDir = { dx, dy };
+  }
+  ok(waterDir, "player starts adjacent to water");
+  s = step(s, { type: "cast", dx: waterDir.dx, dy: waterDir.dy });
+  ok(s.logbook.totals.casts === beforeCasts + 1, "casting at water counts a cast");
+  ok(["reel", "explore"].includes(s.mode), "a cast either hooks a fish or returns to explore");
+}
+
+// 3. Reel -> land a (weak) fish, deterministically
+{
+  let s = newGame({ seed: "reel-test" });
+  // perch has strength 2 in the built-in table
+  ok(s.speciesById.perch, "built-in species table has perch");
+  s.mode = "reel";
+  s.reel = { speciesId: "perch", targetX: -1, targetY: -1, stamina: 2, maxStamina: 2, tension: 0, maxTension: 100 };
+  s = step(s, { type: "reel" }); // stamina 1
+  ok(s.mode === "reel" && s.reel.stamina === 1, "first reel reduces fight, no snap");
+  s = step(s, { type: "reel" }); // stamina 0 -> land
+  ok(s.mode === "explore", "landing returns to explore");
+  ok(s.caught.length === 1 && s.caught[0].speciesId === "perch", "the perch is in the catch list");
+  ok(s.inventory.coins > 0 && s.score > 0, "landing awards coins and score");
+  ok(s.logbook.dex.perch && s.logbook.dex.perch.count === 1, "logbook dex records the perch");
+}
+
+// 4. Snap on excessive tension
+{
+  let s = newGame({ seed: "snap-test" });
+  s.mode = "reel";
+  s.reel = { speciesId: "pike", targetX: -1, targetY: -1, stamina: 5, maxStamina: 5, tension: 95, maxTension: 100 };
+  s = step(s, { type: "reel" }); // pike strong -> tension over max
+  ok(s.mode === "explore" && s.caught.length === 0, "over-tension snaps the line, no catch");
+}
+
+// 5. Shop purchase
+{
+  let s = newGame({ seed: "shop-test" });
+  s.inventory.coins = 1000;
+  s.player = { ...s.world.shop }; // stand at the shanty (white-box)
+  s = step(s, { type: "openShop" });
+  ok(s.mode === "shop", "openShop at the shanty enters shop mode");
+  const beforeRod = s.inventory.rodLevel;
+  s = step(s, { type: "buyRod" });
+  ok(s.inventory.rodLevel === beforeRod + 1, "buying upgrades the rod");
+  ok(s.inventory.coins < 1000, "buying spends coins");
+  ok(s.logbook.gear.rodLevel === s.inventory.rodLevel, "gear syncs into the logbook");
+}
+
+// 6. Dusk ends the trip and updates records
+{
+  let s = newGame({ seed: "dusk-test" });
+  s.score = 123;
+  s.time.turn = s.time.maxTurns - 1;
+  s = step(s, { type: "wait" });
+  ok(s.mode === "gameover", "reaching dusk ends the trip");
+  ok(s.logbook.totals.trips === 1, "trip is counted");
+  ok(s.logbook.bestScore === 123, "best score is recorded");
+}
+
+// 7. Logbook persistence round-trips
+{
+  const dir = mkdtempSync(join(tmpdir(), "nethook-"));
+  const lb = emptyLogbook();
+  lb.totals.caught = 9;
+  lb.bestScore = 555;
+  lb.dex.bass = { name: "Largemouth Bass", count: 3, bestWeight: 4.2, rarity: "uncommon" };
+  lb.gear = { rodLevel: 2, baitLevel: 1, coins: 77 };
+  saveLogbook(lb, dir);
+  const back = loadLogbook(dir);
+  ok(back.totals.caught === 9 && back.bestScore === 555, "totals/bestScore persist");
+  ok(back.dex.bass.bestWeight === 4.2, "dex entry persists");
+  ok(back.gear.coins === 77 && back.gear.rodLevel === 2, "gear persists");
+}
+
+// 8. Spot Pack validation + world build
+{
+  const good = {
+    name: "Test Pond",
+    location: "Nowhere",
+    species: [
+      { name: "Sunfish", glyph: "f", rarity: "common", habitat: "shallow", weightRange: [0.1, 0.5], behavior: "tiny" },
+    ],
+    map: { grid: ["......", ".~~~~.", ".~≈≈~.", ".~~~~.", "......"] },
+    strategy: ["cast at dawn"],
+  };
+  const v = validatePack(good);
+  ok(v.ok, "a well-formed pack validates");
+  const bad = validatePack({ name: "", species: [{ name: "X", rarity: "nope", weightRange: [2, 1] }] });
+  ok(!bad.ok && bad.errors.length >= 2, "a malformed pack is rejected with errors");
+
+  const seedState = { rngState: seedFrom("pack-world") };
+  const world = buildWorld(seedState, v.pack);
+  ok(world.spotName === "Test Pond", "world adopts the pack name");
+  ok(world.playerStart && tileAt(world, world.playerStart.x, world.playerStart.y) === TILE.DOCK, "world has a dock start");
+  ok(world.species[0].name === "Sunfish", "world uses pack species");
+}
+
+// 9. Built-in packs are present and valid
+{
+  const packs = listPacks();
+  ok(packs.length >= 2, "at least two built-in Spot Packs ship");
+}
+
+// 10. Render snapshot (plain)
+{
+  const s = newGame({ seed: "render-test" });
+  const frame = render(s, { color: false });
+  ok(frame.includes("@"), "render shows the player @");
+  ok(frame.includes(s.world.spotName), "render shows the spot name");
+  ok(frame.includes("move: hjkl"), "render shows the controls hint");
+}
+
+console.log(`OK — ${passed} assertions passed.`);

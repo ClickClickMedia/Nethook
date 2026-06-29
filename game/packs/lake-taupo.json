@@ -1,0 +1,22 @@
+{
+  "name": "Lake Taupō",
+  "location": "North Island, New Zealand",
+  "notes": "A vast volcanic caldera lake famous for hard-fighting wild rainbow and brown trout. Work the river mouths and drop-offs at dawn and dusk.",
+  "species": [
+    { "name": "Rainbow Trout", "glyph": "F", "rarity": "uncommon", "habitat": "deep", "weightRange": [0.8, 3.5], "strength": 4, "behavior": "Acrobatic fighter that holds near cool inflows.", "realInfo": "Taupō rainbows average ~1.5kg; smelt-imitating flies and harling work well." },
+    { "name": "Brown Trout", "glyph": "F", "rarity": "rare", "habitat": "reeds", "weightRange": [1.5, 7.0], "strength": 6, "behavior": "Wary, structure-hugging ambusher.", "realInfo": "Browns here go nocturnal in summer; cicada patterns shine in Feb." },
+    { "name": "Common Bully", "glyph": "f", "rarity": "common", "habitat": "shallow", "weightRange": [0.02, 0.1], "strength": 1, "behavior": "Tiny native baitfish trout gorge on." },
+    { "name": "Koura", "glyph": "e", "rarity": "uncommon", "habitat": "deep", "weightRange": [0.05, 0.2], "strength": 2, "behavior": "Native freshwater crayfish scuttling the bottom." },
+    { "name": "Sunken Gumboot", "glyph": "}", "rarity": "common", "habitat": "any", "weightRange": [0.5, 1.2], "strength": 1, "behavior": "A true Kiwi classic.", "junk": true }
+  ],
+  "tackle": [
+    { "name": "Smelt Fly", "type": "bait", "effect": "+trout" },
+    { "name": "Harling Lure", "type": "bait", "effect": "+deep" }
+  ],
+  "strategy": [
+    "Fish river mouths at dawn and dusk when trout move in to feed.",
+    "Find the drop-off where shallow shelf meets deep water — browns patrol the edge.",
+    "In summer, go early or late; midday sun pushes fish deep."
+  ],
+  "hints": { "timeOfDay": "dawn", "season": "summer" }
+}

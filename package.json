@@ -1,0 +1,19 @@
+{
+  "name": "nethook",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A NetHack-style ASCII fishing roguelike for Claude Code dead-time.",
+  "license": "MIT",
+  "bin": {
+    "nethook": "game/index.mjs"
+  },
+  "scripts": {
+    "start": "node game/index.mjs",
+    "test": "node game/selftest.mjs",
+    "dry-run": "node game/launch.mjs --dry-run"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

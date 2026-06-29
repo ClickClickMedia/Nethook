@@ -1,0 +1,23 @@
+{
+  "name": "Lofoten Fjord",
+  "location": "Lofoten, Norway",
+  "notes": "Cold, deep, dramatic saltwater fjord beneath the peaks. Drop heavy jigs into the dark water for cod and the occasional halibut the size of a door.",
+  "species": [
+    { "name": "Atlantic Cod", "glyph": "F", "rarity": "uncommon", "habitat": "deep", "weightRange": [1.0, 12.0], "strength": 5, "behavior": "Schools over deep reefs, takes jigs near the bottom.", "realInfo": "Winter 'skrei' cod migrate to Lofoten to spawn — the famous season." },
+    { "name": "Coalfish (Saithe)", "glyph": "F", "rarity": "common", "habitat": "deep", "weightRange": [0.5, 6.0], "strength": 4, "behavior": "Fast, hard-pulling midwater fighter." },
+    { "name": "Atlantic Mackerel", "glyph": "f", "rarity": "common", "habitat": "shallow", "weightRange": [0.2, 0.7], "strength": 2, "behavior": "Summer shoals that hit shiny feathers." },
+    { "name": "Atlantic Halibut", "glyph": "S", "rarity": "legendary", "habitat": "deep", "weightRange": [20.0, 200.0], "strength": 10, "behavior": "A barn door on the seabed. A genuine endurance war.", "realInfo": "Halibut can exceed 2m; landing a big one can take an hour." },
+    { "name": "Kraken's Lure", "glyph": "♦", "rarity": "mythic", "habitat": "deep", "weightRange": [0.1, 0.1], "strength": 12, "behavior": "Something ancient let go of this. You shouldn't have it.", "realInfo": "Norse sailors feared the kraken in these very waters." },
+    { "name": "Tangle of Net", "glyph": "}", "rarity": "common", "habitat": "any", "weightRange": [0.3, 2.0], "strength": 1, "behavior": "Lost fishing gear.", "junk": true }
+  ],
+  "tackle": [
+    { "name": "Pirk Jig", "type": "bait", "effect": "+deep" },
+    { "name": "Feathered Rig", "type": "bait", "effect": "+mackerel" }
+  ],
+  "strategy": [
+    "Drop heavy jigs straight down — the fish hold deep along the fjord walls.",
+    "Let the jig hit bottom, then work it up; cod and halibut feed near the floor.",
+    "Bundle up. The cold is part of the fight."
+  ],
+  "hints": { "timeOfDay": "midday", "season": "winter" }
+}
